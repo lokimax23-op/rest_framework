@@ -1,17 +1,23 @@
 from django.shortcuts import render
-
-from restapp import models
-
+from restapp.serializers import CategorySerializer, MenuSerializer
+from restapp.models import Menu , Category
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
 # Create your views here.
 
-class Category(models.Model):
-    name = models.CharField(max_length=100)
-
-
-
-class Menu(models.Model):
-    name = models.CharField(max_length=100)
-    description = models.TextField()
-    date_Added = models.DateTimeField(auto_now_add=True)
-    price = models.DecimalField(max_digits=6, decimal_places=2)
-    last_updated = models.DateTimeField(auto_now=True)
+@api_view(['POST','GET'])
+def category_list(request):
+    if request.method == 'GET':
+        categories = Category.objects.all()
+        serializer = CategorySerializer(categories, many=True)
+        return Response(serializer.data)
+    
+    if request.method == 'POST':
+        serializer = CategorySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+        return Response(
+            {"details": "Category created successfully"},
+            status=status.HTTP_201_CREATED,
+        )
