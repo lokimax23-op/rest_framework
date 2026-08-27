@@ -1,4 +1,4 @@
-from rest import serializers
+from rest_framework import serializers
 from restapp.models import Category, Menu
 
 
