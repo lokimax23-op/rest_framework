@@ -2,20 +2,20 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 
-class CategoryApiTests(APITestCase):
-	def test_get_categories_returns_empty_list initially(self):
-		response = self.client.get('/categories/')
+# Fix in Source 5: test_get_categories_returns_empty_list_initially
+def test_get_categories_returns_empty_list_initially(self):
+    response = self.client.get('/categories/')
 
-		self.assertEqual(response.status_code, status.HTTP_200_OK)
-		self.assertEqual(response.data, [])
+    self.assertEqual(response.status_code, status.HTTP_200_OK)
+    self.assertEqual(response.data, [])
 
-	def test_create_category_returns_created_category(self):
+def test_create_category_returns_created_category(self):
 		response = self.client.post('/categories/', {'name': 'Breakfast'}, format='json')
 
 		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 		self.assertEqual(response.data['name'], 'Breakfast')
 
-	def test_create_category_rejects_missing_name(self):
+def test_create_category_rejects_missing_name(self):
 		response = self.client.post('/categories/', {}, format='json')
 
 		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
