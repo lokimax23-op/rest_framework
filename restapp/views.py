@@ -9,7 +9,8 @@ from restapp.serializers import CategorySerializer
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
+from restapp.models import Category, Menu
+from restapp.serializers import CategorySerializer, MenuSerializer
 
 # Ensure category_list is defined at the top level
 @api_view(['GET', 'POST'])
@@ -65,9 +66,22 @@ class CategoryListView(APIView):
                 {"details": f"Category {pk} deleted successfully"},
                 status=status.HTTP_204_NO_CONTENT,
             )
-
         Category.objects.all().delete()
         return Response(
             {"details": "All categories deleted successfully"},
             status=status.HTTP_204_NO_CONTENT,
         )
+
+@api_view(["GET", "POST"])
+def menu_list(request):
+    if request.method == "GET":
+        menus = Menu.objects.all()
+        serializer = MenuSerializer(menus, many=True)
+        return Response(serializer.data)
+
+    serializer = MenuSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

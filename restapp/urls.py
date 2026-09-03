@@ -9,5 +9,6 @@ urlpatterns = [
     path(
         "categories/<int:pk>/", views.CategoryListView.as_view(), name="category"
     ),  # Detail view[cite: 6]
+    path("menus/", views.menu_list, name="menus"),
 ]
 
