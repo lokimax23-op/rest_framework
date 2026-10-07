@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 
+from decouple import config
+import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -19,13 +23,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#6-jz44j7ta#lcpxfcw5x-31*t4&(c8@w_k2ln7h#g%-gp_bt4'
+DEBUG = config('DEBUG', default=True, cast=bool)
+SECRET_KEY = config(
+    'SECRET_KEY',
+    default='dev-only-insecure-key-do-not-use-in-production' if DEBUG else '',
+)
+if not SECRET_KEY:
+    raise ImproperlyConfigured('Set SECRET_KEY in the environment.')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config(
+    'ALLOWED_HOSTS',
+    default='localhost,127.0.0.1,testserver',
+    cast=lambda value: [host.strip() for host in value.split(',') if host.strip()],
+)
 
 
 # Application definition
@@ -38,17 +48,24 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
     'restapp',
+    'resources_app',
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -65,6 +82,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'resources_app.context_processors.portal_context',
             ],
         },
     },
@@ -76,11 +94,18 @@ WSGI_APPLICATION = 'rest.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+DATABASE_URL: str = str(
+    config(
+        'DATABASE_URL',
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+    )
+)
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=600,
+        ssl_require=not DEBUG,
+    )
 }
 
 
@@ -119,13 +144,77 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'student_dashboard'
+LOGOUT_REDIRECT_URL = 'home'
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+SOCIALACCOUNT_FORMS = {
+    'signup': 'resources_app.forms.HiiTSocialSignupForm',
+}
+SOCIALACCOUNT_LOGIN_ON_GET = False
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': config('GOOGLE_OAUTH_CLIENT_ID', default=''),
+            'secret': config('GOOGLE_OAUTH_CLIENT_SECRET', default=''),
+            'key': '',
+        },
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'prompt': 'select_account'},
+    },
+}
+
+PORTAL_SUBSCRIPTION_AMOUNT_KOBO = 500_000
+PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY', default='')
+PAYSTACK_PLAN_CODE = config('PAYSTACK_PLAN_CODE', default='')
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 
 
 # Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default='True', cast=bool)
+EMAIL_HOST_USER = config(
+    'EMAIL_HOST_USER',
+    default='enemareemma2011@gmail.com',
+)
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_BACKEND = (
+    'django.core.mail.backends.smtp.EmailBackend'
+    if EMAIL_HOST_PASSWORD
+    else 'django.core.mail.backends.console.EmailBackend'
+)
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='',
+    cast=lambda value: [
+        origin.strip() for origin in value.split(',') if origin.strip()
+    ],
+)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = 3600 if not DEBUG else 0

@@ -1,0 +1,47 @@
+{% extends 'portal/base.html' %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+<section class="page-banner">
+    <div class="container">
+        <p class="eyebrow">Student dashboard</p>
+        <h1>Welcome back, {{ profile.user.get_full_name|default:profile.user.username }}</h1>
+        <p class="subtitle">Your course enrollments and learning progress at a glance.</p>
+    </div>
+</section>
+<section class="section">
+    <div class="container dashboard-layout">
+        <aside class="profile-card">
+            <span class="profile-initials">{{ profile.user.first_name|first|upper }}{{ profile.user.last_name|first|upper }}</span>
+            <h2>{{ profile.user.get_full_name|default:profile.user.username }}</h2>
+            <p><strong>Registration number</strong><br>{{ profile.registration_number }}</p>
+            <p><strong>Phone</strong><br>{{ profile.phone }}</p>
+            <p><strong>Email</strong><br>{{ profile.user.email }}</p>
+        </aside>
+        <div class="dashboard-main">
+            <div class="section-heading section-heading-row">
+                <div><p class="eyebrow">My learning</p><h2>Enrolled programs</h2></div>
+                <a class="primary-btn" href="{% url 'course_catalog' %}">Browse courses</a>
+            </div>
+            <div class="card-grid dashboard-courses">
+                {% for item in enrollments %}
+                <article class="course-card">
+                    <div class="card-topline"><span class="course-tag">{{ item.course.code }}</span><span class="badge {{ item.status|lower }}">{{ item.get_status_display }}</span></div>
+                    <h3>{{ item.course.title }}</h3>
+                    <p>{{ item.course.description|truncatewords:24 }}</p>
+                    <p><strong>Instructor:</strong>
+                        {% if item.course.instructor %}{{ item.course.instructor.get_full_name|default:item.course.instructor.username }}{% else %}To be announced{% endif %}
+                    </p>
+                    <div class="card-footer"><span>{{ item.course.duration_weeks }} weeks</span><span>Joined {{ item.enrollment_date|date:'M j, Y' }}</span></div>
+                </article>
+                {% empty %}
+                <div class="empty-state">
+                    <h3>Your learning journey starts here</h3>
+                    <p>You have not enrolled in any courses yet.</p>
+                    <a class="primary-btn" href="{% url 'course_catalog' %}">Browse available courses</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

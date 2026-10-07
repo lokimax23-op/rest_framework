@@ -1,0 +1,149 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project_name }}</title>
+    <link rel="stylesheet" href="{% static 'restapp/styles.css' %}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container nav-wrap">
+            <div class="brand">HiiT Portal</div>
+            <nav class="nav">
+                <a href="/">Home</a>
+                <a href="#courses">Courses</a>
+                <a href="#resources">Resources</a>
+                <a href="#about">About</a>
+                <a href="/dashboard/">Dashboard</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container hero-grid">
+                <div>
+                    <p class="eyebrow">Student Success Platform</p>
+                    <h1>{{ project_name }}</h1>
+                    <p class="subtitle">
+                        A modern learning hub for HiiT Ikeja students, instructors, and administrators to manage
+                        courses, track learning resources, and stay connected to academic progress.
+                    </p>
+                    <div class="cta-group">
+                        <a class="primary-btn" href="#courses">Explore Courses</a>
+                        <a class="secondary-btn" href="/dashboard/">View Dashboard</a>
+                    </div>
+                </div>
+                <div class="hero-card">
+                    <h3>Portal Snapshot</h3>
+                    <ul>
+                        <li><strong>{{ student_count }}</strong> active students</li>
+                        <li><strong>{{ course_count }}</strong> enrolled courses</li>
+                        <li><strong>{{ resource_count }}</strong> learning resources</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="stats">
+            <div class="container stats-grid">
+                <div class="stat-box">
+                    <span class="stat-number">{{ student_count }}</span>
+                    <span class="stat-label">Students</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-number">{{ course_count }}</span>
+                    <span class="stat-label">Courses</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-number">{{ resource_count }}</span>
+                    <span class="stat-label">Resources</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-number">98%</span>
+                    <span class="stat-label">Engagement</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="courses" class="section">
+            <div class="container">
+                <div class="section-heading">
+                    <p class="eyebrow">Featured Programs</p>
+                    <h2>Popular courses for this term</h2>
+                </div>
+                <div class="card-grid">
+                    {% for course in course_cards %}
+                    <article class="course-card">
+                        <div class="course-tag">{{ course.category }}</div>
+                        <h3>{{ course.title }}</h3>
+                        <p>Instructor: {{ course.instructor }}</p>
+                        <div class="card-footer">
+                            <span>{{ course.students }} students</span>
+                            <a href="#">Open course</a>
+                        </div>
+                    </article>
+                    {% empty %}
+                    <p>No courses available yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section id="resources" class="section alt-bg">
+            <div class="container">
+                <div class="section-heading">
+                    <p class="eyebrow">Learning Library</p>
+                    <h2>Latest study resources</h2>
+                </div>
+                <div class="resource-list">
+                    {% for resource in resources %}
+                    <div class="resource-item">
+                        <div>
+                            <span class="resource-category">{{ resource.category }}</span>
+                            <h3>{{ resource.title }}</h3>
+                        </div>
+                        <p>{{ resource.description|truncatechars:120 }}</p>
+                        <small>By {{ resource.author.username }}</small>
+                    </div>
+                    {% empty %}
+                    <p>No resources published yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="section">
+            <div class="container about-grid">
+                <div>
+                    <p class="eyebrow">Why HiiT Portal?</p>
+                    <h2>Built for academic flow and student access.</h2>
+                </div>
+                <div class="feature-list">
+                    <div>
+                        <h3>Course Tracking</h3>
+                        <p>Students can keep up with their learning path and upcoming classes.</p>
+                    </div>
+                    <div>
+                        <h3>Resource Hub</h3>
+                        <p>Instructors share notes, study material, and important updates in one place.</p>
+                    </div>
+                    <div>
+                        <h3>Admin Oversight</h3>
+                        <p>Branch leaders can monitor progress and support academic operations efficiently.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-wrap">
+            <p>© 2026 HiiT Student Course Management & Resource Portal</p>
+            <a href="/api/">API Root</a>
+        </div>
+    </footer>
+</body>
+</html>

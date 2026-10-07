@@ -1,0 +1,57 @@
+{% extends 'portal/base.html' %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+<section class="page-banner">
+    <div class="container">
+        <p class="eyebrow">HiiT Plus membership</p>
+        <h1>Keep your learning momentum</h1>
+        <p class="subtitle">Choose a monthly membership provider. Course catalog access and course enrollment remain separate.</p>
+    </div>
+</section>
+<section class="section">
+    <div class="container subscription-layout">
+        <article class="subscription-plan">
+            <p class="eyebrow">Monthly plan</p>
+            <h2>HiiT Plus</h2>
+            <p class="subscription-price">₦{{ subscription_price_ngn }}<span>/ month</span></p>
+            <ul>
+                <li>Member learning updates</li>
+                <li>Study and career resources</li>
+                <li>Cancel recurring billing through your payment provider</li>
+            </ul>
+        </article>
+
+        <div class="subscription-action">
+            {% if subscription and subscription.status == 'active' %}
+                <div class="subscription-status active">
+                    <p class="eyebrow">Membership status</p>
+                    <h2>You’re subscribed</h2>
+                    <p>Your monthly membership is {{ subscription.status_label }} through {{ subscription.get_provider_display }}.</p>
+                </div>
+            {% else %}
+                <h2>Choose a secure checkout</h2>
+                <p>Recurring billing is processed by the payment provider. HiiT does not store card details.</p>
+                {% if paystack_configured %}
+                    <form method="post" action="{% url 'subscription_checkout' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="provider" value="paystack">
+                        <button class="payment-button paystack-button" type="submit">Subscribe with Paystack</button>
+                    </form>
+                {% else %}
+                    <p class="provider-notice">Paystack test checkout is unavailable until <code>PAYSTACK_SECRET_KEY</code> and <code>PAYSTACK_PLAN_CODE</code> are configured.</p>
+                {% endif %}
+                {% if stripe_configured %}
+                    <form method="post" action="{% url 'subscription_checkout' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="provider" value="stripe">
+                        <button class="payment-button stripe-button" type="submit">Subscribe with Stripe</button>
+                    </form>
+                {% else %}
+                    <p class="provider-notice">Stripe test checkout is unavailable until <code>STRIPE_SECRET_KEY</code> is configured.</p>
+                {% endif %}
+            {% endif %}
+            <p class="subscription-footnote">Test mode only until provider test credentials and webhook endpoints are configured.</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

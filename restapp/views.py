@@ -1,11 +1,53 @@
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from resources_app.models import LearningResource
 from restapp.models import Category, Menu
 from restapp.serializers import CategorySerializer, MenuSerializer
+
+PROJECT_NAME = 'HiiT Student Course Management & Resource Portal'
+
+
+def portal_home(request):
+    course_cards = [
+        {'title': 'Web Development', 'category': 'Frontend', 'instructor': 'Mr. Adebayo', 'students': 42},
+        {'title': 'Database Systems', 'category': 'Backend', 'instructor': 'Mrs. Okafor', 'students': 38},
+        {'title': 'Mobile App Design', 'category': 'UI/UX', 'instructor': 'Mr. Isah', 'students': 26},
+    ]
+    resources = LearningResource.objects.select_related('author').order_by('-created_at')[:3]
+    context = {
+        'project_name': PROJECT_NAME,
+        'course_cards': course_cards,
+        'resources': resources,
+        'student_count': 640,
+        'course_count': 12,
+        'resource_count': resources.count(),
+    }
+    return render(request, 'restapp/home.html', context)
+
+
+def portal_dashboard(request):
+    context = {'project_name': PROJECT_NAME, 'student_count': 640, 'course_count': 12}
+    return render(request, 'restapp/dashboard.html', context)
+
+
+@api_view(['GET'])
+def api_root(request):
+    return Response(
+        {
+            'project': PROJECT_NAME,
+            'message': 'Welcome to the API root.',
+            'endpoints': {
+                'categories': '/categories/',
+                'menus': '/menus/',
+                'resources': '/resources/',
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(['GET', 'POST'])
@@ -43,6 +85,34 @@ class CategoryListView(APIView):
                     'data': serializer.data,
                 },
                 status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        category = get_object_or_404(Category, pk=pk)
+        serializer = CategorySerializer(category, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    'details': f'Category {pk} updated successfully',
+                    'data': serializer.data,
+                },
+                status=status.HTTP_200_OK,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        category = get_object_or_404(Category, pk=pk)
+        serializer = CategorySerializer(category, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    'details': f'Category {pk} updated successfully',
+                    'data': serializer.data,
+                },
+                status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -97,6 +167,20 @@ class MenuListView(APIView):
                     'data': serializer.data,
                 },
                 status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        menu = get_object_or_404(Menu, pk=pk)
+        serializer = MenuSerializer(menu, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    'details': f'Menu {pk} updated successfully',
+                    'data': serializer.data,
+                },
+                status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

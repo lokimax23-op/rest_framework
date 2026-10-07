@@ -1,0 +1,26 @@
+{% extends 'portal/base.html' %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+<section class="auth-section">
+    <div class="auth-card">
+        <p class="eyebrow">Join HiiT Ikeja</p>
+        <h1>Create your student account</h1>
+        <p class="muted-text">Create a profile to enroll in courses and follow your learning progress.</p>
+        <form method="post" enctype="multipart/form-data" class="portal-form" id="registrationForm" novalidate>
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {% for field in form %}
+                <div class="form-field">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<small class="help-text">{{ field.help_text|safe }}</small>{% endif %}
+                    {% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+                </div>
+            {% endfor %}
+            <p class="form-feedback" id="registrationFeedback" aria-live="polite"></p>
+            <button class="primary-btn form-submit" type="submit">Create account</button>
+        </form>
+        <p class="auth-switch">Already registered? <a href="{% url 'login' %}">Log in</a></p>
+    </div>
+</section>
+{% endblock %}

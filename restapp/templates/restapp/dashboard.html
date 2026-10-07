@@ -1,0 +1,65 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project_name }} | Dashboard</title>
+    <link rel="stylesheet" href="{% static 'restapp/styles.css' %}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container nav-wrap">
+            <div class="brand">HiiT Portal</div>
+            <nav class="nav">
+                <a href="/">Home</a>
+                <a href="/dashboard/">Dashboard</a>
+                <a href="/api/">API</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="dashboard-page">
+        <div class="container dashboard-grid">
+            <aside class="sidebar">
+                <h2>Admin Area</h2>
+                <ul>
+                    <li>Student Overview</li>
+                    <li>Course Performance</li>
+                    <li>Resource Reviews</li>
+                    <li>Announcements</li>
+                </ul>
+            </aside>
+
+            <section class="dashboard-content">
+                <h1>{{ project_name }}</h1>
+                <p class="subtitle">Branch administration and student success dashboard.</p>
+
+                <div class="stats-grid small-grid">
+                    <div class="stat-box">
+                        <span class="stat-number">{{ student_count }}</span>
+                        <span class="stat-label">Students</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number">{{ course_count }}</span>
+                        <span class="stat-label">Courses</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number">24</span>
+                        <span class="stat-label">Sessions</span>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Upcoming tasks</h3>
+                    <ul class="task-list">
+                        <li>Review learner attendance for Web Development.</li>
+                        <li>Publish new practical assignment for DB Systems.</li>
+                        <li>Update course materials for UI/UX labs.</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

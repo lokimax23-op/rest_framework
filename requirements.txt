@@ -1,5 +1,13 @@
 asgiref==3.12.1
 Django==5.2.11
+dj-database-url>=2.3,<3
 djangorestframework==3.16.1
-sqlparse==0.6.0
+django-allauth>=65.3,<66
+Pillow>=10.0
+psycopg[binary]>=3.2,<4
+python-decouple==3.8
+gunicorn>=23,<24
+whitenoise>=6.9,<7
+stripe>=11,<13
+sqlparse==0.5.5
 tzdata==2026.3

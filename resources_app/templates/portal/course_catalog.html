@@ -1,0 +1,52 @@
+{% extends 'portal/base.html' %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+<section class="page-banner">
+    <div class="container">
+        <p class="eyebrow">HiiT Ikeja programs</p>
+        <h1>Course catalog</h1>
+        <p class="subtitle">Search courses by name, code, description or instructor.</p>
+    </div>
+</section>
+<section class="section">
+    <div class="container">
+        <form class="search-form" method="get" action="{% url 'course_catalog' %}" role="search">
+            <label class="visually-hidden" for="courseSearchInput">Search courses</label>
+            <input id="courseSearchInput" type="search" name="q" value="{{ search_query }}" placeholder="Try Python, UX design or a course code">
+            <button class="primary-btn" type="submit">Search</button>
+        </form>
+        <p class="results-count" id="courseResultsCount" aria-live="polite">{{ courses|length }} course{{ courses|length|pluralize }} found</p>
+        <div class="card-grid course-results" id="courseResults" data-catalog-url="{% url 'course_catalog' %}">
+            {% for course in courses %}
+            <article class="course-card">
+                <div class="course-tag">{{ course.code }}</div>
+                <h2>{{ course.title }}</h2>
+                <p>{{ course.description }}</p>
+                <p><strong>Instructor:</strong>
+                    {% if course.instructor %}{{ course.instructor.get_full_name|default:course.instructor.username }}{% else %}To be announced{% endif %}
+                </p>
+                <p class="course-instructor">
+                    {% if course.learner_count %}{{ course.learner_count }} learner{{ course.learner_count|pluralize }} enrolled{% else %}Be the first to enroll{% endif %}
+                </p>
+                <div class="card-footer">
+                    <span>{{ course.duration_weeks }} weeks</span>
+                    {% if user.is_authenticated %}
+                    <form method="post" action="{% url 'enroll_course' course.pk %}">
+                        {% csrf_token %}
+                        <button class="text-button" type="submit">Enroll</button>
+                    </form>
+                    {% else %}
+                    <a href="{% url 'login' %}?next={% url 'course_catalog' %}">Log in to enroll</a>
+                    {% endif %}
+                </div>
+            </article>
+            {% empty %}
+            <div class="empty-state" id="courseEmptyState">
+                <h2>No courses found</h2>
+                <p>{% if search_query %}Try changing your search.{% else %}New courses will appear here when published.{% endif %}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}
