@@ -102,12 +102,15 @@ WSGI_APPLICATION = 'rest.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASE_URL: str = str(
-    config(
-        'DATABASE_URL',
-        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
-    )
-)
+DATABASE_URL = str(config('DATABASE_URL', default='')).strip()
+if not DATABASE_URL:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            'Set DATABASE_URL to the production PostgreSQL database. '
+            'Production must not fall back to local SQLite.'
+        )
+    DATABASE_URL = f'sqlite:///{BASE_DIR / "db.sqlite3"}'
+
 DATABASES = {
     'default': dj_database_url.config(
         default=DATABASE_URL,

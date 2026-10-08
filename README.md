@@ -16,7 +16,8 @@ secrets in chat.
 
 1. Push this repository to GitHub, then choose **New + → Blueprint** in Render
    and select the repository. Render reads [render.yaml](./render.yaml) to
-   create the Django web service and PostgreSQL database.
+   create the Django web service and PostgreSQL database, and connect the
+   database through `DATABASE_URL`.
 2. Wait for the first deployment to finish. The blueprint generates a
    production `SECRET_KEY`, sets `DEBUG=False`, collects static assets, and
    applies migrations during build.
@@ -43,6 +44,12 @@ persistent PostgreSQL plan for real users. SQLite and the checked-in local
 database are not used on Render. Uploaded profile images are stored on the
 service filesystem by default and may not persist across deploys; use persistent
 object storage or a paid persistent disk before relying on profile uploads.
+
+If deploying an existing manually-created Render service, configure its
+`DATABASE_URL` to point to a persistent PostgreSQL database, then run
+`python manage.py migrate` from the service Shell. A fresh database will have
+empty tables until migrations are applied; any data stored in a previous
+ephemeral SQLite database is separate and is not migrated automatically.
 
 ## Gmail SMTP
 
