@@ -23,6 +23,9 @@ secrets in chat.
 3. In the Render web service's **Environment** settings, add any optional
    Google, Paystack, Stripe, and email variables from `.env.example`. Save and
    redeploy after changing environment variables.
+   Django automatically trusts Render's `RENDER_EXTERNAL_HOSTNAME` for host
+   validation and CSRF, including when Render assigns a generated `onrender.com`
+   hostname.
 4. Set the Google OAuth authorized redirect URI to
    `https://hiit-learning-hub.onrender.com/accounts/google/login/callback/`.
    Update `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` if using a custom domain.
@@ -47,6 +50,12 @@ Set `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD` in `.env`. Use a Google
 App Password (with 2-Step Verification enabled), not your regular Google
 account password. SMTP uses `smtp.gmail.com:587` with TLS by default. If no
 SMTP password is configured, development email is printed to the console.
+
+Student registration sends an email verification link; the account cannot log
+in until the link is used. Every password or Google sign-in then requires a
+six-digit email code that expires after 10 minutes. The login page uses the
+configured email backend, so set `EMAIL_HOST_PASSWORD` before enabling this for
+real users.
 
 ## Google sign-in
 

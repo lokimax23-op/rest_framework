@@ -1,10 +1,12 @@
 import json
+import logging
 import secrets
+import smtplib
 
 import stripe
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import login, logout
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
@@ -12,6 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from .email_auth import send_signup_verification
 from .forms import NewsletterSubscriptionForm, StudentRegistrationForm
 from .models import (
     Course,
@@ -33,6 +36,8 @@ from .payments import (
     valid_paystack_signature,
     verify_paystack_transaction,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def portal_home(request):
@@ -158,9 +163,21 @@ def register(request):
     )
     if request.method == 'POST' and form.is_valid():
         user = form.save()
-        messages.success(request, 'Your student account has been created. Welcome to HiiT!')
-        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-        return redirect('student_dashboard')
+        try:
+            send_signup_verification(request, user)
+        except (OSError, smtplib.SMTPException, ValueError):
+            logger.exception('Could not send a student account verification email.')
+            user.delete()
+            form.add_error(
+                None,
+                'We could not send your verification email. Please try again later.',
+            )
+        else:
+            messages.success(
+                request,
+                'Your account was created. Check your email to verify it before logging in.',
+            )
+            return redirect('login')
     return render(
         request,
         'portal/register.html',

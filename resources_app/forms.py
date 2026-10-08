@@ -39,8 +39,11 @@ class StudentRegistrationForm(UserCreationForm):
 
     @transaction.atomic
     def save(self, commit=True):
-        user = super().save(commit=commit)
+        user = super().save(commit=False)
+        user.is_active = False
         if commit:
+            user.save()
+            self.save_m2m()
             StudentProfile.objects.create(
                 user=user,
                 phone=self.cleaned_data['phone'],

@@ -1,9 +1,11 @@
 import hashlib
 import hmac
 import json
+import re
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.test import TestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -17,6 +19,13 @@ from .models import (
     StudentProfile,
     SubscriptionCheckout,
 )
+
+
+def force_login_verified(client, user):
+    client.force_login(user)
+    session = client.session
+    session['email_2fa_pending'] = False
+    session.save()
 
 
 class LearningResourceApiTests(APITestCase):
@@ -180,7 +189,7 @@ class StudentPortalTests(TestCase):
             email='admin@example.com',
             password='AdminPass!882',
         )
-        self.client.force_login(admin)
+        force_login_verified(self.client, admin)
 
         response = self.client.get('/dashboard/')
 
@@ -191,7 +200,7 @@ class StudentPortalTests(TestCase):
             username='profileless',
             password='CoursePass!882',
         )
-        self.client.force_login(profileless_user)
+        force_login_verified(self.client, profileless_user)
 
         response = self.client.get('/dashboard/')
 
@@ -202,13 +211,31 @@ class StudentPortalTests(TestCase):
             'does not have a student profile',
         )
 
-    def test_student_can_log_in_and_log_out(self):
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_student_login_requires_email_code_before_dashboard(self):
         response = self.client.post(
             '/accounts/login/',
             {'username': 'student', 'password': 'CoursePass!882'},
         )
-        self.assertRedirects(response, '/dashboard/')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, '/dashboard/')
         self.assertEqual(int(self.client.session['_auth_user_id']), self.user.pk)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['ada@example.com'])
+
+        response = self.client.get('/dashboard/')
+        self.assertRedirects(
+            response,
+            '/accounts/verify-login/',
+            fetch_redirect_response=False,
+        )
+        email_body = str(mail.outbox[0].body)
+        codes = re.findall(r'\b\d{6}\b', email_body)
+        self.assertEqual(len(codes), 1)
+        code = codes[0]
+        response = self.client.post('/accounts/verify-login/', {'code': code})
+        self.assertRedirects(response, '/dashboard/', fetch_redirect_response=False)
+        self.assertEqual(self.client.get('/dashboard/').status_code, 200)
 
         response = self.client.post('/accounts/logout/')
         self.assertRedirects(response, '/')
@@ -216,7 +243,7 @@ class StudentPortalTests(TestCase):
 
     def test_authenticated_student_sees_enrollments(self):
         Enrollment.objects.create(student=self.profile, course=self.course)
-        self.client.force_login(self.user)
+        force_login_verified(self.client, self.user)
 
         response = self.client.get('/dashboard/')
 
@@ -229,13 +256,13 @@ class StudentPortalTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/accounts/login/', response.url)
 
-        self.client.force_login(self.user)
+        force_login_verified(self.client, self.user)
         response = self.client.get(f'/courses/{self.course.pk}/enroll/')
         self.assertRedirects(response, '/courses/')
         self.assertFalse(Enrollment.objects.exists())
 
     def test_student_can_enroll_once_and_existing_enrollment_is_not_duplicated(self):
-        self.client.force_login(self.user)
+        force_login_verified(self.client, self.user)
 
         response = self.client.post(f'/courses/{self.course.pk}/enroll/')
         self.assertRedirects(response, '/dashboard/')
@@ -246,7 +273,8 @@ class StudentPortalTests(TestCase):
         self.assertRedirects(response, '/dashboard/')
         self.assertEqual(Enrollment.objects.filter(student=self.profile).count(), 1)
 
-    def test_student_registration_creates_user_and_profile(self):
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_student_registration_sends_verification_email(self):
         response = self.client.post(
             '/register/',
             {
@@ -261,15 +289,92 @@ class StudentPortalTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, '/dashboard/')
+        self.assertRedirects(response, '/accounts/login/')
         created_user = get_user_model().objects.get(username='newstudent')
+        self.assertFalse(created_user.is_active)
         self.assertTrue(
             StudentProfile.objects.filter(
                 user=created_user,
                 registration_number='HIT-2026-002',
             ).exists()
         )
-        self.assertEqual(int(self.client.session['_auth_user_id']), created_user.pk)
+        self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['new@example.com']        )
+
+        email_body = str(mail.outbox[0].body)
+        verification_urls = re.findall(r'http://testserver\S+', email_body)
+        self.assertEqual(len(verification_urls), 1)
+        verification_url = verification_urls[0]
+        response = self.client.get(verification_url)
+        self.assertRedirects(response, '/accounts/login/')
+        created_user.refresh_from_db()
+        self.assertTrue(created_user.is_active)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_login_code_rejects_incorrect_code(self):
+        self.client.post(
+            '/accounts/login/',
+            {'username': 'student', 'password': 'CoursePass!882'},
+        )
+
+        response = self.client.post('/accounts/verify-login/', {'code': 'not-a-code'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'verification code is incorrect')
+        self.assertTrue(self.client.session['email_2fa_pending'])
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_too_many_incorrect_login_codes_signs_user_out(self):
+        self.client.post(
+            '/accounts/login/',
+            {'username': 'student', 'password': 'CoursePass!882'},
+        )
+
+        for _ in range(4):
+            self.client.post(
+                '/accounts/verify-login/',
+                {'code': 'not-a-code'},
+            )
+        response = self.client.post(
+            '/accounts/verify-login/',
+            {'code': 'not-a-code'},
+        )
+
+        self.assertRedirects(response, '/accounts/login/')
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    @patch(
+        'resources_app.email_auth.send_mail',
+        side_effect=OSError('SMTP unavailable'),
+    )
+    def test_registration_reports_email_failure_without_leaving_account(self, _send_mail):
+        response = self.client.post(
+            '/register/',
+            {
+                'username': 'mailfailure',
+                'first_name': 'Mail',
+                'last_name': 'Failure',
+                'email': 'mailfailure@example.com',
+                'phone': '08098765432',
+                'registration_number': 'HIT-2026-003',
+                'password1': 'SafeCoursePass!882',
+                'password2': 'SafeCoursePass!882',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'could not send your verification email')
+        self.assertFalse(
+            get_user_model().objects.filter(username='mailfailure').exists()
+        )
+        self.assertFalse(
+            StudentProfile.objects.filter(
+                registration_number='HIT-2026-003',
+            ).exists()
+        )
+        _send_mail.assert_called_once()
 
     def test_registration_rejects_duplicate_registration_number(self):
         response = self.client.post(
@@ -298,7 +403,7 @@ class SubscriptionAndGoogleAuthTests(TestCase):
             email='member@example.com',
             password='MemberPass!882',
         )
-        self.client.force_login(self.user)
+        force_login_verified(self.client, self.user)
 
     def test_newsletter_signup_is_case_insensitive_and_idempotent(self):
         response = self.client.post(

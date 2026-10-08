@@ -20,6 +20,7 @@ from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 
+from resources_app import auth_views as portal_auth_views
 from resources_app import portal_views
 
 urlpatterns = [
@@ -33,6 +34,16 @@ urlpatterns = [
     ),
     path('dashboard/', portal_views.student_dashboard, name='student_dashboard'),
     path('register/', portal_views.register, name='register'),
+    path(
+        'accounts/verify-email/<str:uidb64>/<str:token>/',
+        portal_auth_views.verify_email,
+        name='verify_email',
+    ),
+    path(
+        'accounts/verify-login/',
+        portal_auth_views.verify_login_email,
+        name='verify_login_email',
+    ),
     path(
         'subscribe/newsletter/',
         portal_views.newsletter_subscribe,

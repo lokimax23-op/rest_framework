@@ -31,11 +31,18 @@ SECRET_KEY = config(
 if not SECRET_KEY:
     raise ImproperlyConfigured('Set SECRET_KEY in the environment.')
 
-ALLOWED_HOSTS = config(
-    'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1,testserver',
-    cast=lambda value: [host.strip() for host in value.split(',') if host.strip()],
-)
+ALLOWED_HOSTS: list[str] = [
+    host.strip()
+    for host in str(
+        config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver')
+    ).split(',')
+    if host.strip()
+]
+RENDER_EXTERNAL_HOSTNAME = str(
+    config('RENDER_EXTERNAL_HOSTNAME', default='')
+).strip()
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # Application definition
@@ -53,7 +60,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'restapp',
-    'resources_app',
+    'resources_app.apps.ResourcesAppConfig',
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -66,6 +73,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'resources_app.middleware.EmailTwoFactorMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -167,6 +175,7 @@ AUTHENTICATION_BACKENDS = [
 
 ACCOUNT_LOGIN_METHODS = {'username', 'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 SOCIALACCOUNT_FORMS = {
     'signup': 'resources_app.forms.HiiTSocialSignupForm',
 }
@@ -206,13 +215,15 @@ EMAIL_BACKEND = (
 )
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
 
-CSRF_TRUSTED_ORIGINS = config(
-    'CSRF_TRUSTED_ORIGINS',
-    default='',
-    cast=lambda value: [
-        origin.strip() for origin in value.split(',') if origin.strip()
-    ],
-)
+CSRF_TRUSTED_ORIGINS: list[str] = [
+    origin.strip()
+    for origin in str(config('CSRF_TRUSTED_ORIGINS', default='')).split(',')
+    if origin.strip()
+]
+if RENDER_EXTERNAL_HOSTNAME:
+    render_origin = f'https://{RENDER_EXTERNAL_HOSTNAME}'
+    if render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_origin)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
