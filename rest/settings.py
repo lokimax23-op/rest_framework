@@ -44,9 +44,18 @@ RENDER_EXTERNAL_HOSTNAME = str(
 ).strip()
 if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-VERCEL_URL = str(config('VERCEL_URL', default='')).strip()
-if VERCEL_URL and VERCEL_URL not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append(VERCEL_URL)
+VERCEL_HOSTNAMES = {
+    str(config(name, default='')).strip()
+    for name in (
+        'VERCEL_URL',
+        'VERCEL_BRANCH_URL',
+        'VERCEL_PROJECT_PRODUCTION_URL',
+    )
+}
+VERCEL_HOSTNAMES.discard('')
+ALLOWED_HOSTS.extend(
+    hostname for hostname in VERCEL_HOSTNAMES if hostname not in ALLOWED_HOSTS
+)
 
 
 # Application definition
@@ -231,8 +240,8 @@ if RENDER_EXTERNAL_HOSTNAME:
     render_origin = f'https://{RENDER_EXTERNAL_HOSTNAME}'
     if render_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(render_origin)
-if VERCEL_URL:
-    vercel_origin = f'https://{VERCEL_URL}'
+for hostname in VERCEL_HOSTNAMES:
+    vercel_origin = f'https://{hostname}'
     if vercel_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(vercel_origin)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

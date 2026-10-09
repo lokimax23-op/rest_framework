@@ -64,9 +64,10 @@ ephemeral SQLite database is separate and is not migrated automatically.
    - `DATABASE_URL`: a persistent PostgreSQL connection string. Use the
      provider's pooled connection URL when available; production does not fall
      back to SQLite.
-3. Deploy the project. Vercel's `VERCEL_URL` is added automatically to
-   `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS`. If you use a custom domain, add
-   its hostname to `ALLOWED_HOSTS` and its full `https://` origin to
+3. Deploy the project. Vercel's `VERCEL_URL`, `VERCEL_BRANCH_URL`, and
+   `VERCEL_PROJECT_PRODUCTION_URL` are added automatically to `ALLOWED_HOSTS`
+   and `CSRF_TRUSTED_ORIGINS`. If you use another custom domain, add its
+   hostname to `ALLOWED_HOSTS` and its full `https://` origin to
    `CSRF_TRUSTED_ORIGINS`, then redeploy.
 4. Apply database migrations after the database and environment variables are
    configured. From a Vercel-linked local checkout with the Vercel CLI
