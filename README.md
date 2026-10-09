@@ -51,6 +51,42 @@ If deploying an existing manually-created Render service, configure its
 empty tables until migrations are applied; any data stored in a previous
 ephemeral SQLite database is separate and is not migrated automatically.
 
+## Deploy to Vercel
+
+1. Import the GitHub repository into Vercel. Vercel detects Django from the
+   root-level `manage.py` and serves the WSGI application in
+   `rest/wsgi.py`; no custom `vercel.json` is needed. Vercel also runs
+   `collectstatic` during the build and serves static files from its CDN.
+2. Before the first deploy, configure these **Production** environment
+   variables in the Vercel project:
+   - `SECRET_KEY`: a unique, private Django secret.
+   - `DEBUG`: `False`.
+   - `DATABASE_URL`: a persistent PostgreSQL connection string. Use the
+     provider's pooled connection URL when available; production does not fall
+     back to SQLite.
+3. Deploy the project. Vercel's `VERCEL_URL` is added automatically to
+   `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS`. If you use a custom domain, add
+   its hostname to `ALLOWED_HOSTS` and its full `https://` origin to
+   `CSRF_TRUSTED_ORIGINS`, then redeploy.
+4. Apply database migrations after the database and environment variables are
+   configured. From a Vercel-linked local checkout with the Vercel CLI
+   installed, run:
+
+   ```sh
+   vercel env run --environment=production -- python manage.py migrate
+   ```
+
+   This runs migrations against the linked project's environment without
+   copying its secrets into a file. Run it again after adding new migrations.
+5. Add optional Google, Paystack, Stripe, and email settings from
+   `.env.example` to Vercel's Production environment as needed. Set the Google
+   OAuth callback and payment webhooks to your deployed domain.
+
+Vercel runs Django as a serverless function. Use persistent PostgreSQL and
+external object storage for profile uploads: files written to the function's
+local filesystem are not durable. Static assets are handled separately by the
+Vercel CDN. Serverless database connections are not kept open between requests.
+
 ## Gmail SMTP
 
 Set `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD` in `.env`. Use a Google

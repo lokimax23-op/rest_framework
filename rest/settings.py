@@ -23,7 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-DEBUG = config('DEBUG', default=True, cast=bool)
+VERCEL = config('VERCEL', default=False, cast=bool)
+DEBUG = config('DEBUG', default=not VERCEL, cast=bool)
 SECRET_KEY = config(
     'SECRET_KEY',
     default='dev-only-insecure-key-do-not-use-in-production' if DEBUG else '',
@@ -43,6 +44,9 @@ RENDER_EXTERNAL_HOSTNAME = str(
 ).strip()
 if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+VERCEL_URL = str(config('VERCEL_URL', default='')).strip()
+if VERCEL_URL and VERCEL_URL not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(VERCEL_URL)
 
 
 # Application definition
@@ -114,7 +118,7 @@ if not DATABASE_URL:
 DATABASES = {
     'default': dj_database_url.config(
         default=DATABASE_URL,
-        conn_max_age=600,
+        conn_max_age=0 if VERCEL else 600,
         ssl_require=not DEBUG,
     )
 }
@@ -227,6 +231,10 @@ if RENDER_EXTERNAL_HOSTNAME:
     render_origin = f'https://{RENDER_EXTERNAL_HOSTNAME}'
     if render_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(render_origin)
+if VERCEL_URL:
+    vercel_origin = f'https://{VERCEL_URL}'
+    if vercel_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(vercel_origin)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
