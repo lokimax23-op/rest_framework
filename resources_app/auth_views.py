@@ -16,6 +16,7 @@ from .email_auth import (
     LOGIN_CODE_RESEND_COOLDOWN,
     _login_code_digest,
     issue_login_code,
+    send_account_activity_notification,
 )
 
 User = get_user_model()
@@ -91,6 +92,7 @@ def verify_login_email(request):
                 messages.error(request, 'That verification code is incorrect.')
             else:
                 request.session['email_2fa_pending'] = False
+                send_account_activity_notification(request.user, 'login')
                 next_url = request.session.pop('email_2fa_next_url', '')
                 if next_url and url_has_allowed_host_and_scheme(
                     next_url,

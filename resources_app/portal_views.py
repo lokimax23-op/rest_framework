@@ -14,7 +14,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .email_auth import send_signup_verification
+from .email_auth import (
+    send_account_activity_notification,
+    send_signup_verification,
+)
 from .forms import NewsletterSubscriptionForm, StudentRegistrationForm
 from .models import (
     Course,
@@ -173,6 +176,7 @@ def register(request):
                 'We could not send your verification email. Please try again later.',
             )
         else:
+            send_account_activity_notification(user, 'signup')
             messages.success(
                 request,
                 'Your account was created. Check your email to verify it before logging in.',

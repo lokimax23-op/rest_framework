@@ -235,6 +235,9 @@ class StudentPortalTests(TestCase):
         code = codes[0]
         response = self.client.post('/accounts/verify-login/', {'code': code})
         self.assertRedirects(response, '/dashboard/', fetch_redirect_response=False)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(mail.outbox[1].to, ['ada@example.com'])
+        self.assertEqual(mail.outbox[1].subject, 'HiiT account login alert')
         self.assertEqual(self.client.get('/dashboard/').status_code, 200)
 
         response = self.client.post('/accounts/logout/')
@@ -299,8 +302,11 @@ class StudentPortalTests(TestCase):
             ).exists()
         )
         self.assertNotIn('_auth_user_id', self.client.session)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].to, ['new@example.com']        )
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(mail.outbox[0].to, ['new@example.com'])
+        self.assertEqual(mail.outbox[1].to, ['new@example.com'])
+        self.assertEqual(mail.outbox[1].subject, 'HiiT account signup alert')
+        self.assertIn('A signup to your HiiT account', mail.outbox[1].body)
 
         email_body = str(mail.outbox[0].body)
         verification_urls = re.findall(r'http://testserver\S+', email_body)
@@ -323,6 +329,7 @@ class StudentPortalTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'verification code is incorrect')
         self.assertTrue(self.client.session['email_2fa_pending'])
+        self.assertEqual(len(mail.outbox), 1)
 
     @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
     def test_too_many_incorrect_login_codes_signs_user_out(self):

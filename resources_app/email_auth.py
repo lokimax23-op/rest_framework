@@ -9,6 +9,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.dispatch import receiver
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.crypto import salted_hmac
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
@@ -41,6 +42,29 @@ def send_signup_verification(request, user):
     )
     if sent != 1:
         raise OSError('The verification email was not accepted for delivery.')
+
+
+def send_account_activity_notification(user, activity):
+    try:
+        sent = send_mail(
+            f'HiiT account {activity} alert',
+            (
+                f'Hello {user.get_username()},\n\n'
+                f'A {activity} to your HiiT account was recorded on '
+                f'{timezone.localtime():%Y-%m-%d %H:%M %Z}.\n\n'
+                'If you did not perform this action, please contact the HiiT '
+                'portal administrator.'
+            ),
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+        if sent != 1:
+            raise OSError('The account activity email was not accepted for delivery.')
+    except (OSError, smtplib.SMTPException, ValueError):
+        logger.exception('Could not send a HiiT account activity email.')
+        return False
+    return True
 
 
 def _login_code_digest(code):

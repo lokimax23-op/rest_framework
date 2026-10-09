@@ -99,7 +99,9 @@ Student registration sends an email verification link; the account cannot log
 in until the link is used. Every password or Google sign-in then requires a
 six-digit email code that expires after 10 minutes. The login page uses the
 configured email backend, so set `EMAIL_HOST_PASSWORD` before enabling this for
-real users.
+real users. The portal also emails account activity notices after signup and
+after a login code is successfully verified. Activity-notice delivery failures
+are logged and do not prevent account creation or login.
 
 ## Google sign-in
 
