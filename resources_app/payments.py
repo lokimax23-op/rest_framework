@@ -68,6 +68,13 @@ def _paystack_http_error(exc):
             'PAYSTACK_PLAN_CODE is an active monthly test plan from the same '
             'account as the Test Secret Key.' + detail
         )
+    if exc.code == 403:
+        return RuntimeError(
+            'Paystack denied checkout access (HTTP 403). Confirm the Test '
+            'Secret Key and monthly test plan belong to the same Paystack '
+            'account, and that the account allows transaction initialization. '
+            'If these are correct, contact Paystack support.' + detail
+        )
     return RuntimeError(
         f'Paystack could not start checkout (HTTP {exc.code}). Try again '
         'later or check the provider settings.' + detail

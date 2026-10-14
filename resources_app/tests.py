@@ -551,6 +551,34 @@ class SubscriptionAndGoogleAuthTests(TestCase):
             'active monthly test plan from the same account',
         )
 
+    @override_settings(
+        PAYSTACK_SECRET_KEY='sk_test_paystack',
+        PAYSTACK_PLAN_CODE='PLN_test',
+    )
+    @patch(
+        'resources_app.payments.urlopen',
+        side_effect=HTTPError(
+            'https://api.paystack.co/transaction/initialize',
+            403,
+            'Forbidden',
+            hdrs=None,
+            fp=BytesIO(b''),
+        ),
+    )
+    def test_paystack_checkout_explains_access_denied(self, _urlopen):
+        self.client.post(
+            '/membership/checkout/',
+            {'provider': SubscriptionCheckout.Provider.PAYSTACK},
+        )
+
+        membership_page = self.client.get('/membership/')
+        self.assertContains(membership_page, 'Paystack denied checkout access (HTTP 403)')
+        self.assertContains(
+            membership_page,
+            'belong to the same Paystack account',
+        )
+        self.assertContains(membership_page, 'contact Paystack support')
+
     @override_settings(STRIPE_SECRET_KEY='sk_test_portal')
     @patch('resources_app.portal_views.create_stripe_checkout')
     def test_stripe_checkout_redirects_to_provider(self, create_checkout):
