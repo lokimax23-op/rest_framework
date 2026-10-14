@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuToggle && navWrap && mainNavigation) {
         const setMenuOpen = (isOpen) => {
             navWrap.classList.toggle('is-menu-open', isOpen);
+            mainNavigation.inert =
+                !isOpen && window.matchMedia('(max-width: 900px)').matches;
             menuToggle.setAttribute('aria-expanded', String(isOpen));
             menuToggle.setAttribute(
                 'aria-label',
@@ -19,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         navWrap.classList.add('menu-ready');
+        setMenuOpen(false);
         menuToggle.addEventListener('click', () => {
             setMenuOpen(menuToggle.getAttribute('aria-expanded') !== 'true');
         });
