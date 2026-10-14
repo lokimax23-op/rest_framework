@@ -15,13 +15,18 @@ class StudentProfile(models.Model):
         related_name='profile',
     )
     phone = models.CharField(max_length=15)
-    gender = models.CharField(max_length=20, choices=Gender.choices)
+    gender = models.CharField(
+        max_length=20,
+        choices=Gender.choices,
+        db_default=Gender.PREFER_NOT_TO_SAY,
+    )
     legacy_registration_number = models.CharField(
         max_length=20,
         unique=True,
         blank=True,
         null=True,
         default=None,
+        db_column='registration_number',
     )
     profile_picture = models.ImageField(
         upload_to='profiles/',
