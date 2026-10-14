@@ -30,6 +30,9 @@
                 </p>
                 <div class="card-footer">
                     <span>{{ course.duration_weeks }} weeks</span>
+                    {% if user.is_staff or course.instructor_id == user.id %}
+                    <a href="{% url 'course_assignments' course.pk %}">Manage assignments</a>
+                    {% endif %}
                     {% if user.is_authenticated %}
                     <form method="post" action="{% url 'enroll_course' course.pk %}">
                         {% csrf_token %}

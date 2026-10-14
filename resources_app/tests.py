@@ -13,7 +13,9 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from .models import (
+    AssignmentSubmission,
     Course,
+    CourseAssignment,
     Enrollment,
     LearningResource,
     NewsletterSubscription,
@@ -407,6 +409,241 @@ class StudentPortalTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Select a valid choice')
         self.assertFalse(get_user_model().objects.filter(username='duplicate').exists())
+
+
+class CourseAssignmentTests(TestCase):
+    def setUp(self):
+        self.student = get_user_model().objects.create_user(
+            username='assignmentstudent',
+            email='assignmentstudent@example.com',
+            password='StudentPass!882',
+        )
+        self.profile = StudentProfile.objects.create(
+            user=self.student,
+            phone='08012340000',
+            gender=StudentProfile.Gender.FEMALE,
+        )
+        self.instructor = get_user_model().objects.create_user(
+            username='assignmentinstructor',
+            email='instructor@example.com',
+            password='InstructorPass!882',
+        )
+        self.course = Course.objects.create(
+            code='ASG101',
+            title='Assignment Course',
+            description='Course used to test assignment work.',
+            instructor=self.instructor,
+        )
+        self.assignment = CourseAssignment.objects.create(
+            course=self.course,
+            title='First task',
+            instructions='Explain the topic in your own words.',
+            created_by=self.instructor,
+        )
+        Enrollment.objects.create(
+            student=self.profile,
+            course=self.course,
+            status=Enrollment.Status.ACTIVE,
+        )
+
+    def test_enrolled_student_can_view_and_submit_assignment_answer(self):
+        force_login_verified(self.client, self.student)
+
+        response = self.client.get(
+            f'/courses/{self.course.pk}/assignments/'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'First task')
+        self.assertContains(response, 'Submit answer')
+
+        response = self.client.post(
+            f'/courses/{self.course.pk}/assignments/{self.assignment.pk}/submit/',
+            {'answer': 'My first assignment answer.'},
+        )
+        self.assertRedirects(
+            response,
+            f'/courses/{self.course.pk}/assignments/',
+            fetch_redirect_response=False,
+        )
+        submission = AssignmentSubmission.objects.get(
+            assignment=self.assignment,
+            student=self.profile,
+        )
+        self.assertEqual(submission.answer, 'My first assignment answer.')
+        self.assertEqual(
+            submission.status,
+            AssignmentSubmission.Status.SUBMITTED,
+        )
+
+    def test_resubmitting_answer_clears_old_grade_and_feedback(self):
+        submission = AssignmentSubmission.objects.create(
+            assignment=self.assignment,
+            student=self.profile,
+            answer='First version',
+            status=AssignmentSubmission.Status.GRADED,
+            grade='85.00',
+            feedback='Good work.',
+            graded_by=self.instructor,
+        )
+        force_login_verified(self.client, self.student)
+
+        self.client.post(
+            f'/courses/{self.course.pk}/assignments/{self.assignment.pk}/submit/',
+            {'answer': 'Updated answer'},
+        )
+
+        submission.refresh_from_db()
+        self.assertEqual(submission.answer, 'Updated answer')
+        self.assertEqual(
+            submission.status,
+            AssignmentSubmission.Status.SUBMITTED,
+        )
+        self.assertIsNone(submission.grade)
+        self.assertEqual(submission.feedback, '')
+        self.assertIsNone(submission.graded_by)
+
+    def test_unenrolled_student_cannot_view_or_submit_assignments(self):
+        unenrolled_user = get_user_model().objects.create_user(
+            username='notenrolled',
+            password='StudentPass!882',
+        )
+        unenrolled_profile = StudentProfile.objects.create(
+            user=unenrolled_user,
+            phone='08012340001',
+            gender=StudentProfile.Gender.MALE,
+        )
+        force_login_verified(self.client, unenrolled_user)
+
+        response = self.client.get(
+            f'/courses/{self.course.pk}/assignments/'
+        )
+        self.assertEqual(response.status_code, 403)
+        response = self.client.post(
+            f'/courses/{self.course.pk}/assignments/{self.assignment.pk}/submit/',
+            {'answer': 'Unauthorized answer'},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(
+            AssignmentSubmission.objects.filter(
+                student=unenrolled_profile,
+            ).exists()
+        )
+
+    def test_course_instructor_can_create_assignments_and_grade_answers(self):
+        AssignmentSubmission.objects.create(
+            assignment=self.assignment,
+            student=self.profile,
+            answer='Student response',
+        )
+        force_login_verified(self.client, self.instructor)
+
+        response = self.client.get(
+            f'/courses/{self.course.pk}/assignments/'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Student response')
+        self.assertContains(response, 'Create an assignment')
+
+        response = self.client.post(
+            f'/courses/{self.course.pk}/assignments/',
+            {
+                'title': 'Second task',
+                'instructions': 'Write a short explanation.',
+                'due_date': '2026-12-15',
+            },
+        )
+        self.assertRedirects(
+            response,
+            f'/courses/{self.course.pk}/assignments/',
+            fetch_redirect_response=False,
+        )
+        created_assignment = CourseAssignment.objects.get(title='Second task')
+        self.assertEqual(created_assignment.created_by, self.instructor)
+        self.assertEqual(created_assignment.due_date.isoformat(), '2026-12-15')
+
+        submission = AssignmentSubmission.objects.get(
+            assignment=self.assignment,
+            student=self.profile,
+        )
+        response = self.client.post(
+            f'/courses/{self.course.pk}/assignments/{self.assignment.pk}'
+            f'/submissions/{submission.pk}/grade/',
+            {'grade': '92.5', 'feedback': 'Clear and complete.'},
+        )
+        self.assertRedirects(
+            response,
+            f'/courses/{self.course.pk}/assignments/',
+            fetch_redirect_response=False,
+        )
+        submission.refresh_from_db()
+        self.assertEqual(submission.grade, 92.5)
+        self.assertEqual(submission.feedback, 'Clear and complete.')
+        self.assertEqual(
+            submission.status,
+            AssignmentSubmission.Status.GRADED,
+        )
+        self.assertEqual(submission.graded_by, self.instructor)
+        self.assertIsNotNone(submission.graded_at)
+
+    def test_other_instructor_cannot_manage_assignments(self):
+        other_instructor = get_user_model().objects.create_user(
+            username='otherinstructor',
+            password='InstructorPass!882',
+        )
+        force_login_verified(self.client, other_instructor)
+
+        response = self.client.get(
+            f'/courses/{self.course.pk}/assignments/'
+        )
+        self.assertEqual(response.status_code, 403)
+        response = self.client.post(
+            f'/courses/{self.course.pk}/assignments/',
+            {'title': 'Unauthorized', 'instructions': 'Should not be saved.'},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(
+            CourseAssignment.objects.filter(title='Unauthorized').exists()
+        )
+
+    def test_staff_can_manage_assignments_without_a_student_profile(self):
+        staff = get_user_model().objects.create_user(
+            username='assignmentstaff',
+            password='StaffPass!882',
+            is_staff=True,
+        )
+        force_login_verified(self.client, staff)
+
+        response = self.client.get(
+            f'/courses/{self.course.pk}/assignments/'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Create an assignment')
+
+    def test_grade_must_be_within_zero_and_one_hundred(self):
+        submission = AssignmentSubmission.objects.create(
+            assignment=self.assignment,
+            student=self.profile,
+            answer='Student response',
+        )
+        force_login_verified(self.client, self.instructor)
+
+        response = self.client.post(
+            f'/courses/{self.course.pk}/assignments/{self.assignment.pk}'
+            f'/submissions/{submission.pk}/grade/',
+            {'grade': '101', 'feedback': 'Invalid score'},
+        )
+
+        self.assertRedirects(
+            response,
+            f'/courses/{self.course.pk}/assignments/',
+            fetch_redirect_response=False,
+        )
+        submission.refresh_from_db()
+        self.assertEqual(
+            submission.status,
+            AssignmentSubmission.Status.SUBMITTED,
+        )
+        self.assertIsNone(submission.grade)
 
 
 class SubscriptionAndGoogleAuthTests(TestCase):

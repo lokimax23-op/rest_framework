@@ -1,7 +1,9 @@
 from django.contrib import admin
 
 from .models import (
+    AssignmentSubmission,
     Course,
+    CourseAssignment,
     Enrollment,
     LearningResource,
     NewsletterSubscription,
@@ -9,6 +11,35 @@ from .models import (
     StudentProfile,
     SubscriptionCheckout,
 )
+
+
+class AssignmentSubmissionInline(admin.TabularInline):
+    model = AssignmentSubmission
+    extra = 0
+    fields = ('student', 'status', 'grade', 'feedback', 'submitted_at')
+    readonly_fields = ('student', 'submitted_at')
+
+
+@admin.register(CourseAssignment)
+class CourseAssignmentAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'due_date', 'created_by', 'created_at')
+    list_filter = ('course', 'due_date')
+    search_fields = ('title', 'instructions', 'course__code', 'course__title')
+    inlines = (AssignmentSubmissionInline,)
+
+
+@admin.register(AssignmentSubmission)
+class AssignmentSubmissionAdmin(admin.ModelAdmin):
+    list_display = ('assignment', 'student', 'status', 'grade', 'submitted_at')
+    list_filter = ('status', 'assignment__course', 'submitted_at')
+    search_fields = (
+        'assignment__title',
+        'student__user__username',
+        'student__user__email',
+        'answer',
+        'feedback',
+    )
+    readonly_fields = ('submitted_at', 'graded_at')
 
 
 @admin.register(StudentProfile)

@@ -33,6 +33,22 @@ urlpatterns = [
         portal_views.enroll_course,
         name='enroll_course',
     ),
+    path(
+        'courses/<int:course_id>/assignments/',
+        portal_views.course_assignments,
+        name='course_assignments',
+    ),
+    path(
+        'courses/<int:course_id>/assignments/<int:assignment_id>/submit/',
+        portal_views.submit_assignment_answer,
+        name='submit_assignment_answer',
+    ),
+    path(
+        'courses/<int:course_id>/assignments/<int:assignment_id>/submissions/'
+        '<int:submission_id>/grade/',
+        portal_views.grade_assignment_submission,
+        name='grade_assignment_submission',
+    ),
     path('dashboard/', portal_views.student_dashboard, name='student_dashboard'),
     path('register/', portal_views.register, name='register'),
     path(

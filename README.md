@@ -123,6 +123,16 @@ The homepage newsletter form saves a unique email subscription in the portal
 database. Manage subscriber records from Django admin. Email campaign delivery
 is not configured by this feature.
 
+## Course assignments
+
+Course instructors and staff can open a course's **Manage assignments** page
+from the course catalog to create assignment instructions and optional due
+dates. Enrolled students can open assignments from their dashboard, submit or
+update text answers, and review grades and instructor feedback. Instructors
+can review submissions and grade them from that course page; staff can manage
+all courses. Assignment and submission records are also available in Django
+admin.
+
 ## Paid HiiT Plus membership
 
 The monthly membership is **₦5,000**. Course browsing and course enrollment are

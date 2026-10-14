@@ -95,6 +95,82 @@ class Enrollment(models.Model):
         return f'{self.student.user.get_username()} enrolled in {self.course.code}'
 
 
+class CourseAssignment(models.Model):
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='assignments',
+    )
+    title = models.CharField(max_length=200)
+    instructions = models.TextField()
+    due_date = models.DateField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_course_assignments',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['due_date', '-created_at']
+
+    def __str__(self):
+        return f'{self.course.code}: {self.title}'
+
+
+class AssignmentSubmission(models.Model):
+    class Status(models.TextChoices):
+        SUBMITTED = 'submitted', 'Submitted'
+        GRADED = 'graded', 'Graded'
+
+    assignment = models.ForeignKey(
+        CourseAssignment,
+        on_delete=models.CASCADE,
+        related_name='submissions',
+    )
+    student = models.ForeignKey(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name='assignment_submissions',
+    )
+    answer = models.TextField()
+    submitted_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.SUBMITTED,
+    )
+    grade = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    feedback = models.TextField(blank=True)
+    graded_at = models.DateTimeField(null=True, blank=True)
+    graded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='graded_assignment_submissions',
+    )
+
+    class Meta:
+        ordering = ['-submitted_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['assignment', 'student'],
+                name='unique_assignment_student_submission',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.student.user.get_username()}: {self.assignment.title}'
+
+
 class LearningResource(models.Model):
     title = models.CharField(max_length=200)
     category = models.CharField(max_length=100)

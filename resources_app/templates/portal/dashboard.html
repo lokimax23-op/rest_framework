@@ -32,6 +32,7 @@
                         {% if item.course.instructor %}{{ item.course.instructor.get_full_name|default:item.course.instructor.username }}{% else %}To be announced{% endif %}
                     </p>
                     <div class="card-footer"><span>{{ item.course.duration_weeks }} weeks</span><span>Joined {{ item.enrollment_date|date:'M j, Y' }}</span></div>
+                    <a class="primary-btn assignment-link" href="{% url 'course_assignments' item.course.pk %}">View assignments</a>
                 </article>
                 {% empty %}
                 <div class="empty-state">

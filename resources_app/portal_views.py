@@ -9,18 +9,27 @@ from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from .assignment_forms import (
+    AssignmentAnswerForm,
+    AssignmentGradeForm,
+    CourseAssignmentForm,
+)
 from .email_auth import (
     send_account_activity_notification,
     send_signup_verification,
 )
 from .forms import NewsletterSubscriptionForm, StudentRegistrationForm
 from .models import (
+    AssignmentSubmission,
     Course,
+    CourseAssignment,
     Enrollment,
     LearningResource,
     NewsletterSubscription,
@@ -158,6 +167,155 @@ def enroll_course(request, course_id):
     else:
         messages.info(request, f'You are already registered for {course.title}.')
     return redirect('student_dashboard')
+
+
+def _can_manage_course_assignments(user, course):
+    return user.is_staff or course.instructor_id == user.pk
+
+
+@login_required
+def course_assignments(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    can_manage = _can_manage_course_assignments(request.user, course)
+    profile = StudentProfile.objects.filter(user=request.user).first()
+    is_enrolled = bool(
+        profile
+        and Enrollment.objects.filter(student=profile, course=course).exists()
+    )
+    if not can_manage and not is_enrolled:
+        raise PermissionDenied
+
+    form = CourseAssignmentForm()
+    if request.method == 'POST':
+        if not can_manage:
+            raise PermissionDenied
+        form = CourseAssignmentForm(request.POST)
+        if form.is_valid():
+            assignment = form.save(commit=False)
+            assignment.course = course
+            assignment.created_by = request.user
+            assignment.save()
+            messages.success(request, 'Assignment created for this course.')
+            return redirect('course_assignments', course_id=course.pk)
+
+    assignments = list(
+        CourseAssignment.objects.filter(course=course).prefetch_related(
+            'submissions__student__user'
+        )
+    )
+    assignment_rows = []
+    for assignment in assignments:
+        submissions = list(assignment.submissions.all())
+        if can_manage:
+            for submission in submissions:
+                submission.grade_form = AssignmentGradeForm(instance=submission)
+        own_submission = next(
+            (
+                submission
+                for submission in submissions
+                if profile and submission.student_id == profile.pk
+            ),
+            None,
+        )
+        assignment_rows.append(
+            {
+                'assignment': assignment,
+                'own_submission': own_submission,
+                'submissions': submissions if can_manage else [],
+                'answer_form': (
+                    AssignmentAnswerForm(instance=own_submission)
+                    if profile and is_enrolled and not can_manage
+                    else None
+                ),
+            }
+        )
+
+    return render(
+        request,
+        'portal/course_assignments.html',
+        {
+            'course': course,
+            'assignments': assignment_rows,
+            'can_manage': can_manage,
+            'form': form,
+            'page_title': f'{course.code} assignments',
+        },
+    )
+
+
+@login_required
+@require_POST
+def submit_assignment_answer(request, course_id, assignment_id):
+    course = get_object_or_404(Course, pk=course_id)
+    assignment = get_object_or_404(
+        CourseAssignment,
+        pk=assignment_id,
+        course=course,
+    )
+    profile = StudentProfile.objects.filter(user=request.user).first()
+    if profile is None or not Enrollment.objects.filter(
+        student=profile,
+        course=course,
+    ).exists():
+        raise PermissionDenied
+    if _can_manage_course_assignments(request.user, course):
+        raise PermissionDenied
+
+    submission = AssignmentSubmission.objects.filter(
+        assignment=assignment,
+        student=profile,
+    ).first()
+    form = AssignmentAnswerForm(request.POST, instance=submission)
+    if not form.is_valid():
+        messages.error(request, 'Enter your answer before submitting.')
+        return redirect('course_assignments', course_id=course.pk)
+
+    saved_submission = form.save(commit=False)
+    saved_submission.assignment = assignment
+    saved_submission.student = profile
+    saved_submission.status = AssignmentSubmission.Status.SUBMITTED
+    saved_submission.grade = None
+    saved_submission.feedback = ''
+    saved_submission.graded_at = None
+    saved_submission.graded_by = None
+    saved_submission.save()
+    messages.success(request, 'Your assignment answer has been submitted.')
+    return redirect('course_assignments', course_id=course.pk)
+
+
+@login_required
+@require_POST
+def grade_assignment_submission(
+    request,
+    course_id,
+    assignment_id,
+    submission_id,
+):
+    course = get_object_or_404(Course, pk=course_id)
+    if not _can_manage_course_assignments(request.user, course):
+        raise PermissionDenied
+    assignment = get_object_or_404(
+        CourseAssignment,
+        pk=assignment_id,
+        course=course,
+    )
+    submission = get_object_or_404(
+        AssignmentSubmission,
+        pk=submission_id,
+        assignment=assignment,
+    )
+    form = AssignmentGradeForm(request.POST, instance=submission)
+    if not form.is_valid():
+        messages.error(request, 'Enter a grade from 0 to 100.')
+        return redirect('course_assignments', course_id=course.pk)
+
+    graded_submission = form.save(commit=False)
+    graded_submission.status = AssignmentSubmission.Status.GRADED
+    graded_submission.graded_at = timezone.now()
+    graded_submission.graded_by = request.user
+    graded_submission.save()
+    messages.success(request, 'Grade and feedback saved.')
+    return redirect('course_assignments', course_id=course.pk)
 
 
 def register(request):
