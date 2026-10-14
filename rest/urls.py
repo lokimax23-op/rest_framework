@@ -36,6 +36,11 @@ urlpatterns = [
     path('dashboard/', portal_views.student_dashboard, name='student_dashboard'),
     path('register/', portal_views.register, name='register'),
     path(
+        'accounts/signup/',
+        portal_views.register,
+        name='account_signup',
+    ),
+    path(
         'accounts/verify-email/<str:uidb64>/<str:token>/',
         portal_auth_views.verify_email,
         name='verify_email',

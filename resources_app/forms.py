@@ -29,6 +29,22 @@ class StudentRegistrationForm(UserCreationForm):
             'gender',
         )
 
+    def clean_username(self):
+        username = self.cleaned_data['username'].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError(
+                'An account with this username already exists. Please log in instead.'
+            )
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data['email'].strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError(
+                'An account with this email already exists. Please log in or reset your password.'
+            )
+        return email
+
     @transaction.atomic
     def save(self, commit=True):
         user = super().save(commit=False)
