@@ -13,7 +13,7 @@
         <aside class="profile-card">
             <span class="profile-initials">{{ profile.user.first_name|first|upper }}{{ profile.user.last_name|first|upper }}</span>
             <h2>{{ profile.user.get_full_name|default:profile.user.username }}</h2>
-            <p><strong>Registration number</strong><br>{{ profile.registration_number }}</p>
+            <p><strong>Gender</strong><br>{{ profile.get_gender_display }}</p>
             <p><strong>Phone</strong><br>{{ profile.phone }}</p>
             <p><strong>Email</strong><br>{{ profile.user.email }}</p>
         </aside>

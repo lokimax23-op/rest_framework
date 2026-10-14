@@ -114,8 +114,8 @@ http://127.0.0.1:8000/accounts/google/login/callback/
 ```
 
 The Google sign-in button appears when both values are configured. First-time
-Google users are asked for their HiiT phone number and registration number to
-create their student profile.
+Google users are asked for their HiiT phone number and gender to create their
+student profile.
 
 ## Newsletter
 

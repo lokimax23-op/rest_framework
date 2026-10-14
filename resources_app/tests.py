@@ -125,7 +125,8 @@ class StudentPortalTests(TestCase):
         self.profile = StudentProfile.objects.create(
             user=self.user,
             phone='08012345678',
-            registration_number='HIT-2026-001',
+            gender=StudentProfile.Gender.FEMALE,
+            legacy_registration_number='HIT-2026-001',
         )
         self.instructor = get_user_model().objects.create_user(
             username='instructor',
@@ -252,7 +253,9 @@ class StudentPortalTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Python Foundations')
-        self.assertContains(response, 'HIT-2026-001')
+        self.assertContains(response, 'Gender')
+        self.assertContains(response, 'Female')
+        self.assertNotContains(response, 'HIT-2026-001')
 
     def test_enrollment_requires_login_and_post(self):
         response = self.client.post(f'/courses/{self.course.pk}/enroll/')
@@ -286,7 +289,7 @@ class StudentPortalTests(TestCase):
                 'last_name': 'Student',
                 'email': 'new@example.com',
                 'phone': '08098765432',
-                'registration_number': 'HIT-2026-002',
+                'gender': StudentProfile.Gender.NON_BINARY,
                 'password1': 'SafeCoursePass!882',
                 'password2': 'SafeCoursePass!882',
             },
@@ -298,7 +301,8 @@ class StudentPortalTests(TestCase):
         self.assertTrue(
             StudentProfile.objects.filter(
                 user=created_user,
-                registration_number='HIT-2026-002',
+                gender=StudentProfile.Gender.NON_BINARY,
+                legacy_registration_number__isnull=True,
             ).exists()
         )
         self.assertNotIn('_auth_user_id', self.client.session)
@@ -365,7 +369,7 @@ class StudentPortalTests(TestCase):
                 'last_name': 'Failure',
                 'email': 'mailfailure@example.com',
                 'phone': '08098765432',
-                'registration_number': 'HIT-2026-003',
+                'gender': StudentProfile.Gender.MALE,
                 'password1': 'SafeCoursePass!882',
                 'password2': 'SafeCoursePass!882',
             },
@@ -378,12 +382,12 @@ class StudentPortalTests(TestCase):
         )
         self.assertFalse(
             StudentProfile.objects.filter(
-                registration_number='HIT-2026-003',
+                user__username='mailfailure',
             ).exists()
         )
         _send_mail.assert_called_once()
 
-    def test_registration_rejects_duplicate_registration_number(self):
+    def test_registration_rejects_invalid_gender(self):
         response = self.client.post(
             '/register/',
             {
@@ -392,14 +396,14 @@ class StudentPortalTests(TestCase):
                 'last_name': 'Student',
                 'email': 'new@example.com',
                 'phone': '08098765432',
-                'registration_number': self.profile.registration_number,
+                'gender': 'invalid',
                 'password1': 'SafeCoursePass!882',
                 'password2': 'SafeCoursePass!882',
             },
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'already in use')
+        self.assertContains(response, 'Select a valid choice')
         self.assertFalse(get_user_model().objects.filter(username='duplicate').exists())
 
 

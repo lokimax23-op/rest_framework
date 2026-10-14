@@ -13,8 +13,9 @@ from .models import (
 
 @admin.register(StudentProfile)
 class StudentProfileAdmin(admin.ModelAdmin):
-    list_display = ('registration_number', 'user', 'phone')
-    search_fields = ('registration_number', 'user__username', 'user__email')
+    list_display = ('user', 'gender', 'phone')
+    list_filter = ('gender',)
+    search_fields = ('user__username', 'user__email')
 
 
 @admin.register(Course)
@@ -28,7 +29,12 @@ class CourseAdmin(admin.ModelAdmin):
 class EnrollmentAdmin(admin.ModelAdmin):
     list_display = ('student', 'course', 'enrollment_date', 'status')
     list_filter = ('status', 'enrollment_date')
-    search_fields = ('student__registration_number', 'course__code', 'course__title')
+    search_fields = (
+        'student__user__username',
+        'student__user__email',
+        'course__code',
+        'course__title',
+    )
 
 
 @admin.register(LearningResource)

@@ -3,13 +3,26 @@ from django.db import models
 
 
 class StudentProfile(models.Model):
+    class Gender(models.TextChoices):
+        MALE = 'male', 'Male'
+        FEMALE = 'female', 'Female'
+        NON_BINARY = 'non_binary', 'Non-binary'
+        PREFER_NOT_TO_SAY = 'prefer_not_to_say', 'Prefer not to say'
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='profile',
     )
     phone = models.CharField(max_length=15)
-    registration_number = models.CharField(max_length=20, unique=True)
+    gender = models.CharField(max_length=20, choices=Gender.choices)
+    legacy_registration_number = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        null=True,
+        default=None,
+    )
     profile_picture = models.ImageField(
         upload_to='profiles/',
         default='profiles/default.png',
@@ -17,8 +30,7 @@ class StudentProfile(models.Model):
     )
 
     def __str__(self):
-        full_name = self.user.get_full_name() or self.user.get_username()
-        return f'{full_name} ({self.registration_number})'
+        return self.user.get_full_name() or self.user.get_username()
 
 
 class Course(models.Model):

@@ -15,7 +15,7 @@ class StudentRegistrationForm(UserCreationForm):
     last_name = forms.CharField(max_length=150)
     email = forms.EmailField()
     phone = forms.CharField(max_length=15)
-    registration_number = forms.CharField(max_length=20)
+    gender = forms.ChoiceField(choices=StudentProfile.Gender.choices)
     profile_picture = forms.ImageField(required=False)
 
     class Meta(UserCreationForm.Meta):
@@ -26,16 +26,8 @@ class StudentRegistrationForm(UserCreationForm):
             'last_name',
             'email',
             'phone',
-            'registration_number',
+            'gender',
         )
-
-    def clean_registration_number(self):
-        registration_number = self.cleaned_data['registration_number']
-        if StudentProfile.objects.filter(
-            registration_number=registration_number
-        ).exists():
-            raise forms.ValidationError('This registration number is already in use.')
-        return registration_number
 
     @transaction.atomic
     def save(self, commit=True):
@@ -47,7 +39,7 @@ class StudentRegistrationForm(UserCreationForm):
             StudentProfile.objects.create(
                 user=user,
                 phone=self.cleaned_data['phone'],
-                registration_number=self.cleaned_data['registration_number'],
+                gender=self.cleaned_data['gender'],
                 profile_picture=(
                     self.cleaned_data.get('profile_picture')
                     or 'profiles/default.png'
@@ -62,15 +54,7 @@ class NewsletterSubscriptionForm(forms.Form):
 
 class HiiTSocialSignupForm(SocialSignupForm):
     phone = forms.CharField(max_length=15)
-    registration_number = forms.CharField(max_length=20)
-
-    def clean_registration_number(self):
-        registration_number = self.cleaned_data['registration_number']
-        if StudentProfile.objects.filter(
-            registration_number=registration_number
-        ).exists():
-            raise forms.ValidationError('This registration number is already in use.')
-        return registration_number
+    gender = forms.ChoiceField(choices=StudentProfile.Gender.choices)
 
     @transaction.atomic
     def custom_signup(self, request, user):
@@ -78,5 +62,5 @@ class HiiTSocialSignupForm(SocialSignupForm):
         StudentProfile.objects.create(
             user=user,
             phone=self.cleaned_data['phone'],
-            registration_number=self.cleaned_data['registration_number'],
+            gender=self.cleaned_data['gender'],
         )

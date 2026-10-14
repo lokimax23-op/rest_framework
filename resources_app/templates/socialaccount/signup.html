@@ -5,7 +5,7 @@
     <div class="auth-card">
         <p class="eyebrow">Google sign in</p>
         <h1>Complete your HiiT student profile</h1>
-        <p class="muted-text">Add your Ikeja registration number and phone to finish creating your account.</p>
+        <p class="muted-text">Add your gender and phone to finish creating your account.</p>
         <form method="post" class="portal-form">
             {% csrf_token %}
             {% if form.non_field_errors %}<div class="field-error">{{ form.non_field_errors }}</div>{% endif %}
