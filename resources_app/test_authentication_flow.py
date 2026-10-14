@@ -27,6 +27,17 @@ class LoginFlowTests(TestCase):
             'Your HiiT login verification code',
         )
 
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_login_accepts_username_with_different_case_and_surrounding_spaces(self):
+        response = self.client.post(
+            '/accounts/login/',
+            {'username': '  STUDENT  ', 'password': 'CoursePass!882'},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(int(self.client.session['_auth_user_id']), self.user.pk)
+        self.assertEqual(len(mail.outbox), 1)
+
     def test_login_page_exposes_password_reset_link(self):
         response = self.client.get('/accounts/login/')
 
