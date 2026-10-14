@@ -2,17 +2,20 @@ import json
 import logging
 import secrets
 import smtplib
+from io import BytesIO
 
 import stripe
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q
+from django.db import transaction
+from django.db.models import Count, Prefetch, Q
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.text import get_valid_filename
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -28,6 +31,7 @@ from .email_auth import (
 from .forms import NewsletterSubscriptionForm, StudentRegistrationForm
 from .models import (
     AssignmentSubmission,
+    AssignmentSubmissionAttachment,
     Course,
     CourseAssignment,
     Enrollment,
@@ -200,7 +204,13 @@ def course_assignments(request, course_id):
 
     assignments = list(
         CourseAssignment.objects.filter(course=course).prefetch_related(
-            'submissions__student__user'
+            'submissions__student__user',
+            Prefetch(
+                'submissions__attachments',
+                queryset=AssignmentSubmissionAttachment.objects.defer(
+                    'file_data'
+                ),
+            ),
         )
     )
     assignment_rows = []
@@ -265,22 +275,115 @@ def submit_assignment_answer(request, course_id, assignment_id):
         assignment=assignment,
         student=profile,
     ).first()
-    form = AssignmentAnswerForm(request.POST, instance=submission)
+    form = AssignmentAnswerForm(
+        request.POST,
+        request.FILES,
+        initial={'answer': submission.answer if submission else ''},
+    )
     if not form.is_valid():
-        messages.error(request, 'Enter your answer before submitting.')
+        messages.error(request, '; '.join(
+            error
+            for errors in form.errors.values()
+            for error in errors
+        ))
         return redirect('course_assignments', course_id=course.pk)
 
-    saved_submission = form.save(commit=False)
-    saved_submission.assignment = assignment
-    saved_submission.student = profile
-    saved_submission.status = AssignmentSubmission.Status.SUBMITTED
-    saved_submission.grade = None
-    saved_submission.feedback = ''
-    saved_submission.graded_at = None
-    saved_submission.graded_by = None
-    saved_submission.save()
+    attachments = form.cleaned_data['attachments']
+    replace_attachments = form.cleaned_data['replace_attachments']
+    kept_attachments = (
+        AssignmentSubmissionAttachment.objects.filter(
+            submission=submission
+        )
+        if submission and not replace_attachments
+        else AssignmentSubmissionAttachment.objects.none()
+    )
+    if (
+        kept_attachments.count() + len(attachments)
+        > settings.ASSIGNMENT_ATTACHMENT_MAX_FILES
+        or sum(kept_attachments.values_list('file_size', flat=True))
+        + sum(file.size for file in attachments)
+        > settings.ASSIGNMENT_ATTACHMENT_MAX_TOTAL_BYTES
+    ):
+        messages.error(
+            request,
+            'Your attached files would exceed the limit of 5 files and '
+            '4 MB total. Replace existing files or remove some before '
+            'submitting.',
+        )
+        return redirect('course_assignments', course_id=course.pk)
+
+    with transaction.atomic():
+        saved_submission = submission or AssignmentSubmission(
+            assignment=assignment,
+            student=profile,
+        )
+        saved_submission.answer = form.cleaned_data['answer']
+        saved_submission.status = AssignmentSubmission.Status.SUBMITTED
+        saved_submission.grade = None
+        saved_submission.feedback = ''
+        saved_submission.graded_at = None
+        saved_submission.graded_by = None
+        saved_submission.save()
+        if replace_attachments:
+            saved_submission.attachments.all().delete()
+        for uploaded_file in attachments:
+            filename = uploaded_file.name.replace('\\', '/').rsplit('/', 1)[-1]
+            filename = get_valid_filename(filename)[:255]
+            file_data = b''.join(uploaded_file.chunks())
+            AssignmentSubmissionAttachment.objects.create(
+                submission=saved_submission,
+                file_name=filename,
+                file_size=len(file_data),
+                file_data=file_data,
+            )
     messages.success(request, 'Your assignment answer has been submitted.')
     return redirect('course_assignments', course_id=course.pk)
+
+
+@login_required
+def download_assignment_attachment(
+    request,
+    course_id,
+    assignment_id,
+    submission_id,
+    attachment_id,
+):
+    course = get_object_or_404(Course, pk=course_id)
+    assignment = get_object_or_404(
+        CourseAssignment,
+        pk=assignment_id,
+        course=course,
+    )
+    submission = get_object_or_404(
+        AssignmentSubmission,
+        pk=submission_id,
+        assignment=assignment,
+    )
+    can_manage = _can_manage_course_assignments(request.user, course)
+    profile = StudentProfile.objects.filter(user=request.user).first()
+    is_enrolled = bool(
+        profile
+        and Enrollment.objects.filter(student=profile, course=course).exists()
+    )
+    if not can_manage and (
+        not is_enrolled or submission.student_id != profile.pk
+    ):
+        raise PermissionDenied
+
+    attachment = get_object_or_404(
+        AssignmentSubmissionAttachment,
+        pk=attachment_id,
+        submission=submission,
+    )
+    response = FileResponse(
+        BytesIO(bytes(attachment.file_data)),
+        as_attachment=True,
+        filename=attachment.file_name,
+        content_type='application/octet-stream',
+    )
+    response['Cache-Control'] = 'private, no-store'
+    response['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 
 @login_required

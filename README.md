@@ -127,11 +127,13 @@ is not configured by this feature.
 
 Course instructors and staff can open a course's **Manage assignments** page
 from the course catalog to create assignment instructions and optional due
-dates. Enrolled students can open assignments from their dashboard, submit or
-update text answers, and review grades and instructor feedback. Instructors
-can review submissions and grade them from that course page; staff can manage
-all courses. Assignment and submission records are also available in Django
-admin.
+dates. Enrolled students can submit or update answers with up to five supported
+file attachments, with a 4 MB total per submission. Attachments are stored in
+PostgreSQL, so they count toward database storage and should be included in
+database backup and capacity planning. Only the enrolled student and course
+instructors/staff can download a submission's files. Instructors can review
+submissions and grade them from that course page; staff can manage all courses.
+Assignment and submission records are also available in Django admin.
 
 ## Paid HiiT Plus membership
 

@@ -57,6 +57,13 @@
                         </div>
                         <p class="muted-text">Submitted {{ submission.submitted_at|date:'M j, Y g:i A' }}</p>
                         <div class="assignment-answer">{{ submission.answer|linebreaks }}</div>
+                        {% if submission.attachments.all %}
+                        <ul class="assignment-attachments">
+                            {% for attachment in submission.attachments.all %}
+                            <li><a href="{% url 'download_assignment_attachment' course.pk row.assignment.pk submission.pk attachment.pk %}">{{ attachment.file_name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
                         {% if submission.status == 'graded' %}
                         <p><strong>Current grade:</strong> {{ submission.grade }}/100</p>
                         {% endif %}
@@ -83,6 +90,14 @@
                             <span class="badge {{ row.own_submission.status }}">{{ row.own_submission.get_status_display }}</span>
                         </div>
                         <div class="assignment-answer">{{ row.own_submission.answer|linebreaks }}</div>
+                        {% if row.own_submission.attachments.all %}
+                        <h5>Your attached files</h5>
+                        <ul class="assignment-attachments">
+                            {% for attachment in row.own_submission.attachments.all %}
+                            <li><a href="{% url 'download_assignment_attachment' course.pk row.assignment.pk row.own_submission.pk attachment.pk %}">{{ attachment.file_name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
                         <p class="muted-text">Submitted {{ row.own_submission.submitted_at|date:'M j, Y g:i A' }}</p>
                         {% if row.own_submission.status == 'graded' %}
                         <p><strong>Grade:</strong> {{ row.own_submission.grade }}/100</p>
@@ -92,20 +107,34 @@
                         {% endif %}
                         {% endif %}
                     </div>
-                    <form class="portal-form" method="post" action="{% url 'submit_assignment_answer' course.pk row.assignment.pk %}">
+                    <form class="portal-form" method="post" enctype="multipart/form-data" action="{% url 'submit_assignment_answer' course.pk row.assignment.pk %}">
                         {% csrf_token %}
                         <div class="form-field">
                             <label for="{{ row.answer_form.answer.id_for_label }}">Update your answer</label>
                             {{ row.answer_form.answer }}
                         </div>
+                        <div class="form-field">
+                            <label for="{{ row.answer_form.attachments.id_for_label }}">Add attached files</label>
+                            {{ row.answer_form.attachments }}
+                            <small>{{ row.answer_form.attachments.help_text }}</small>
+                        </div>
+                        <div class="form-field">
+                            <label for="{{ row.answer_form.replace_attachments.id_for_label }}">{{ row.answer_form.replace_attachments.label }}</label>
+                            {{ row.answer_form.replace_attachments }}
+                        </div>
                         <button class="primary-btn form-submit" type="submit">Update submission</button>
                     </form>
                 {% else %}
-                    <form class="portal-form" method="post" action="{% url 'submit_assignment_answer' course.pk row.assignment.pk %}">
+                    <form class="portal-form" method="post" enctype="multipart/form-data" action="{% url 'submit_assignment_answer' course.pk row.assignment.pk %}">
                         {% csrf_token %}
                         <div class="form-field">
                             <label for="{{ row.answer_form.answer.id_for_label }}">Your answer</label>
                             {{ row.answer_form.answer }}
+                        </div>
+                        <div class="form-field">
+                            <label for="{{ row.answer_form.attachments.id_for_label }}">Attach files</label>
+                            {{ row.answer_form.attachments }}
+                            <small>{{ row.answer_form.attachments.help_text }}</small>
                         </div>
                         <button class="primary-btn form-submit" type="submit">Submit answer</button>
                     </form>

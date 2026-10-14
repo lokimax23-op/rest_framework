@@ -2,6 +2,11 @@ from django.conf import settings
 from django.db import models
 
 
+ASSIGNMENT_ATTACHMENT_MAX_FILE_BYTES = 4 * 1024 * 1024
+ASSIGNMENT_ATTACHMENT_MAX_FILES = 5
+ASSIGNMENT_ATTACHMENT_MAX_TOTAL_BYTES = 4 * 1024 * 1024
+
+
 class StudentProfile(models.Model):
     class Gender(models.TextChoices):
         MALE = 'male', 'Male'
@@ -169,6 +174,26 @@ class AssignmentSubmission(models.Model):
 
     def __str__(self):
         return f'{self.student.user.get_username()}: {self.assignment.title}'
+
+
+class AssignmentSubmissionAttachment(models.Model):
+    submission = models.ForeignKey(
+        AssignmentSubmission,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+    )
+    file_name = models.CharField(max_length=255)
+    file_size = models.PositiveIntegerField()
+    file_data = models.BinaryField(
+        max_length=ASSIGNMENT_ATTACHMENT_MAX_FILE_BYTES,
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['uploaded_at', 'pk']
+
+    def __str__(self):
+        return self.file_name
 
 
 class LearningResource(models.Model):

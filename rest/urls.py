@@ -45,6 +45,12 @@ urlpatterns = [
     ),
     path(
         'courses/<int:course_id>/assignments/<int:assignment_id>/submissions/'
+        '<int:submission_id>/files/<int:attachment_id>/',
+        portal_views.download_assignment_attachment,
+        name='download_assignment_attachment',
+    ),
+    path(
+        'courses/<int:course_id>/assignments/<int:assignment_id>/submissions/'
         '<int:submission_id>/grade/',
         portal_views.grade_assignment_submission,
         name='grade_assignment_submission',
