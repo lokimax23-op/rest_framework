@@ -40,6 +40,40 @@ def is_stripe_configured():
     )
 
 
+def _paystack_error_message(response_body):
+    try:
+        response_data = json.loads(response_body)
+    except (TypeError, UnicodeDecodeError, json.JSONDecodeError):
+        return ''
+    if not isinstance(response_data, dict):
+        return ''
+    message = response_data.get('message')
+    if not isinstance(message, str):
+        return ''
+    return ' '.join(message.split())[:240]
+
+
+def _paystack_http_error(exc):
+    provider_message = _paystack_error_message(exc.read())
+    detail = f' Paystack said: {provider_message}' if provider_message else ''
+    if exc.code == 401:
+        return RuntimeError(
+            'Paystack rejected the API key (HTTP 401). Confirm '
+            'PAYSTACK_SECRET_KEY is the Test Secret Key from the same '
+            'Paystack account as the test plan.' + detail
+        )
+    if exc.code == 400:
+        return RuntimeError(
+            'Paystack rejected the checkout details (HTTP 400). Confirm '
+            'PAYSTACK_PLAN_CODE is an active monthly test plan from the same '
+            'account as the Test Secret Key.' + detail
+        )
+    return RuntimeError(
+        f'Paystack could not start checkout (HTTP {exc.code}). Try again '
+        'later or check the provider settings.' + detail
+    )
+
+
 def external_object_id(value):
     if isinstance(value, str):
         return value
@@ -82,15 +116,33 @@ def create_paystack_checkout(request, checkout) -> str:
     try:
         with urlopen(api_request, timeout=15) as response:
             result = json.load(response)
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+    except HTTPError as exc:
+        raise _paystack_http_error(exc) from exc
+    except (URLError, TimeoutError) as exc:
         raise RuntimeError('Paystack checkout could not be started.') from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            'Paystack returned an unreadable checkout response.'
+        ) from exc
 
-    if not result.get('status') or not result.get('data', {}).get('authorization_url'):
+    data = result.get('data') if isinstance(result, dict) else None
+    if not isinstance(data, dict) or not result.get('status'):
+        provider_message = (
+            _paystack_error_message(json.dumps(result).encode())
+            if isinstance(result, dict)
+            else ''
+        )
+        detail = f' Paystack said: {provider_message}' if provider_message else ''
+        raise RuntimeError(
+            'Paystack declined to initialize checkout.' + detail
+        )
+    authorization_url = data.get('authorization_url')
+    if not isinstance(authorization_url, str) or not authorization_url:
         raise RuntimeError('Paystack did not return a checkout link.')
 
-    checkout.provider_checkout_id = result['data'].get('access_code', '')
+    checkout.provider_checkout_id = data.get('access_code', '')
     checkout.save(update_fields=['provider_checkout_id'])
-    return result['data']['authorization_url']
+    return authorization_url
 
 
 def verify_paystack_transaction(reference):

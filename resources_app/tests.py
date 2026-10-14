@@ -2,7 +2,9 @@ import hashlib
 import hmac
 import json
 import re
+from io import BytesIO
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -518,6 +520,36 @@ class SubscriptionAndGoogleAuthTests(TestCase):
         checkout = SubscriptionCheckout.objects.get()
         self.assertEqual(checkout.status, SubscriptionCheckout.Status.FAILED)
         self.assertContains(self.client.get('/membership/'), 'PAYSTACK_SECRET_KEY')
+
+    @override_settings(
+        PAYSTACK_SECRET_KEY='sk_test_paystack',
+        PAYSTACK_PLAN_CODE='PLN_test',
+    )
+    @patch(
+        'resources_app.payments.urlopen',
+        side_effect=HTTPError(
+            'https://api.paystack.co/transaction/initialize',
+            400,
+            'Bad Request',
+            hdrs=None,
+            fp=BytesIO(b'{"status":false,"message":"Plan not found"}'),
+        ),
+    )
+    def test_paystack_checkout_explains_provider_plan_rejection(self, _urlopen):
+        response = self.client.post(
+            '/membership/checkout/',
+            {'provider': SubscriptionCheckout.Provider.PAYSTACK},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, '/membership/')
+        membership_page = self.client.get('/membership/')
+        self.assertContains(membership_page, 'Paystack rejected the checkout details')
+        self.assertContains(membership_page, 'Plan not found')
+        self.assertContains(
+            membership_page,
+            'active monthly test plan from the same account',
+        )
 
     @override_settings(STRIPE_SECRET_KEY='sk_test_portal')
     @patch('resources_app.portal_views.create_stripe_checkout')
