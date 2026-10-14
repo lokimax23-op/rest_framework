@@ -466,6 +466,16 @@ class SubscriptionAndGoogleAuthTests(TestCase):
         self.assertNotContains(response, 'will not collect real payments')
 
     @override_settings(
+        PAYSTACK_SECRET_KEY='  sk_test_paystack  ',
+        PAYSTACK_PLAN_CODE='  PLN_test  ',
+    )
+    def test_paystack_test_checkout_accepts_copied_values_with_whitespace(self):
+        response = self.client.get('/membership/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Subscribe with Paystack (Test)')
+
+    @override_settings(
         STRIPE_SECRET_KEY='sk_live_stripe',
         STRIPE_WEBHOOK_SECRET='',
     )

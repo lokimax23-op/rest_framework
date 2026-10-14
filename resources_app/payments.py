@@ -13,6 +13,7 @@ from .models import PortalSubscription
 
 
 def payment_mode(secret_key):
+    secret_key = secret_key.strip()
     if secret_key.startswith('sk_live_'):
         return 'live'
     if secret_key.startswith('sk_test_'):
@@ -29,11 +30,14 @@ def stripe_mode():
 
 
 def is_paystack_configured():
-    return bool(paystack_mode() and settings.PAYSTACK_PLAN_CODE)
+    return bool(paystack_mode() and settings.PAYSTACK_PLAN_CODE.strip())
 
 
 def is_stripe_configured():
-    return bool(stripe_mode() and settings.STRIPE_WEBHOOK_SECRET.startswith('whsec_'))
+    return bool(
+        stripe_mode()
+        and settings.STRIPE_WEBHOOK_SECRET.strip().startswith('whsec_')
+    )
 
 
 def external_object_id(value):
