@@ -652,6 +652,8 @@
     .cdl-navbar .nav-wrap {
         position: relative;
         flex-wrap: wrap;
+        flex-direction: row;
+        align-items: center;
         min-height: 68px;
         padding-top: .7rem;
         padding-bottom: .7rem;
@@ -659,12 +661,13 @@
 
     .nav-menu-toggle {
         display: inline-flex;
+        margin-left: auto;
     }
 
     .cdl-navbar .nav {
         flex-basis: 100%;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-end;
         gap: .2rem;
         max-height: 0;
         overflow: hidden;
@@ -692,13 +695,14 @@
     .cdl-navbar .nav a,
     .cdl-navbar .nav .btn-logout {
         display: block;
-        width: 100%;
+        width: auto;
+        min-width: 12rem;
         padding: .7rem .75rem;
-        text-align: center;
+        text-align: right;
     }
 
     .cdl-navbar .nav .logout-form {
-        width: 100%;
+        width: auto;
     }
 
     .nav-wrap.is-menu-open .nav-menu-icon {
