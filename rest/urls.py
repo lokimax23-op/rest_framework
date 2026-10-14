@@ -21,6 +21,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from resources_app import auth_views as portal_auth_views
+from resources_app.login_forms import StudentAuthenticationForm
 from resources_app import portal_views
 
 urlpatterns = [
@@ -81,7 +82,10 @@ urlpatterns = [
     ),
     path(
         'accounts/login/',
-        auth_views.LoginView.as_view(template_name='portal/login.html'),
+        auth_views.LoginView.as_view(
+            template_name='portal/login.html',
+            authentication_form=StudentAuthenticationForm,
+        ),
         name='login',
     ),
     path('accounts/logout/', portal_views.logout_view, name='logout'),

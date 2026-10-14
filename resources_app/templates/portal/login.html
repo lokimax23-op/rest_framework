@@ -5,7 +5,9 @@
     <div class="auth-card">
         <p class="eyebrow">Welcome back</p>
         <h1>Log in to HiiT</h1>
-        <p class="muted-text">Continue to your dashboard and enrolled courses.</p>
+        <p class="muted-text">
+            Sign in with your username or email. We will email a verification code after your password is accepted.
+        </p>
         <form method="post" class="portal-form">
             {% csrf_token %}
             {% if form.non_field_errors %}<div class="field-error">{{ form.non_field_errors }}</div>{% endif %}
@@ -19,6 +21,9 @@
             {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
             <button class="primary-btn form-submit" type="submit">Log in</button>
         </form>
+        <p class="auth-switch">
+            <a href="{% url 'account_reset_password' %}">Forgot your password?</a>
+        </p>
         {% if google_auth_enabled %}
             <div class="auth-divider"><span>or</span></div>
             <a class="google-button" href="/accounts/google/login/">

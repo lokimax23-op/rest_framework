@@ -5,7 +5,9 @@
     <div class="auth-card">
         <p class="eyebrow">Join HiiT Ikeja</p>
         <h1>Create your student account</h1>
-        <p class="muted-text">Create a profile to enroll in courses and follow your learning progress.</p>
+        <p class="muted-text">
+            Create a profile to enroll in courses and follow your learning progress. We will email a verification link before your first sign-in.
+        </p>
         <form method="post" enctype="multipart/form-data" class="portal-form" id="registrationForm" novalidate>
             {% csrf_token %}
             {{ form.non_field_errors }}
