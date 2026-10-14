@@ -1,4 +1,41 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const menuToggle = document.querySelector('.nav-menu-toggle');
+    const navWrap = menuToggle?.closest('.nav-wrap');
+    const mainNavigation = menuToggle
+        ? document.getElementById(menuToggle.getAttribute('aria-controls'))
+        : null;
+
+    if (menuToggle && navWrap && mainNavigation) {
+        const setMenuOpen = (isOpen) => {
+            navWrap.classList.toggle('is-menu-open', isOpen);
+            menuToggle.setAttribute('aria-expanded', String(isOpen));
+            menuToggle.setAttribute(
+                'aria-label',
+                isOpen ? 'Close navigation menu' : 'Open navigation menu'
+            );
+            menuToggle.querySelector('.nav-menu-label').textContent = isOpen
+                ? 'Close'
+                : 'Menu';
+        };
+
+        navWrap.classList.add('menu-ready');
+        menuToggle.addEventListener('click', () => {
+            setMenuOpen(menuToggle.getAttribute('aria-expanded') !== 'true');
+        });
+        mainNavigation.addEventListener('click', (event) => {
+            if (event.target.closest('a')) setMenuOpen(false);
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && menuToggle.getAttribute('aria-expanded') === 'true') {
+                setMenuOpen(false);
+                menuToggle.focus();
+            }
+        });
+        window.matchMedia('(min-width: 901px)').addEventListener('change', () => {
+            setMenuOpen(false);
+        });
+    }
+
     const searchInput = document.getElementById('courseSearchInput');
     const courseResults = document.getElementById('courseResults');
     const resultCount = document.getElementById('courseResultsCount');

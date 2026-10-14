@@ -594,6 +594,96 @@
     clip-path: inset(50%);
 }
 
+.nav-menu-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    min-height: 44px;
+    border: 1px solid rgba(255, 255, 255, .55);
+    border-radius: 8px;
+    padding: .5rem .75rem;
+    background: transparent;
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.nav-menu-toggle:focus-visible,
+.cdl-navbar .nav a:focus-visible,
+.btn-logout:focus-visible {
+    outline: 3px solid var(--hiit-gold);
+    outline-offset: 3px;
+}
+
+.nav-menu-icon,
+.nav-menu-icon::before,
+.nav-menu-icon::after {
+    display: block;
+    width: 1.15rem;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+}
+
+.nav-menu-icon {
+    position: relative;
+}
+
+.nav-menu-icon::before,
+.nav-menu-icon::after {
+    position: absolute;
+    left: 0;
+    content: "";
+}
+
+.nav-menu-icon::before {
+    top: -.35rem;
+}
+
+.nav-menu-icon::after {
+    top: .35rem;
+}
+
+@media (max-width: 900px) {
+    .cdl-navbar .nav-wrap {
+        position: relative;
+        flex-wrap: wrap;
+        min-height: 68px;
+        padding-top: .7rem;
+        padding-bottom: .7rem;
+    }
+
+    .nav-menu-toggle {
+        display: inline-flex;
+    }
+
+    .cdl-navbar .nav {
+        flex-basis: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: .2rem;
+        padding: .6rem 0 .2rem;
+    }
+
+    .cdl-navbar .nav a,
+    .cdl-navbar .nav .btn-logout {
+        display: block;
+        width: 100%;
+        padding: .7rem .75rem;
+        text-align: left;
+    }
+
+    .cdl-navbar .nav .logout-form {
+        width: 100%;
+    }
+
+    .nav-wrap.menu-ready:not(.is-menu-open) .nav {
+        display: none;
+    }
+}
+
 @media (max-width: 820px) {
     .dashboard-layout,
     .dashboard-courses,
