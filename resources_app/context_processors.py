@@ -1,5 +1,12 @@
 from django.conf import settings
 
+from .payments import (
+    is_paystack_configured,
+    is_stripe_configured,
+    paystack_mode,
+    stripe_mode,
+)
+
 
 def portal_context(request):
     _ = request
@@ -11,8 +18,8 @@ def portal_context(request):
         'subscription_price_ngn': (
             settings.PORTAL_SUBSCRIPTION_AMOUNT_KOBO // 100
         ),
-        'paystack_configured': bool(
-            settings.PAYSTACK_SECRET_KEY and settings.PAYSTACK_PLAN_CODE
-        ),
-        'stripe_configured': bool(settings.STRIPE_SECRET_KEY),
+        'paystack_configured': is_paystack_configured(),
+        'stripe_configured': is_stripe_configured(),
+        'paystack_mode': paystack_mode(),
+        'stripe_mode': stripe_mode(),
     }

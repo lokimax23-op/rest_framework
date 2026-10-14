@@ -35,7 +35,9 @@ from .payments import (
     external_object_id,
     is_paystack_configured,
     is_stripe_configured,
+    paystack_mode,
     set_subscription_status_by_provider_id,
+    stripe_mode,
     valid_paystack_signature,
     verify_paystack_transaction,
 )
@@ -227,6 +229,8 @@ def subscription_manage(request):
             'page_title': 'Membership subscription',
             'paystack_configured': is_paystack_configured(),
             'stripe_configured': is_stripe_configured(),
+            'paystack_mode': paystack_mode(),
+            'stripe_mode': stripe_mode(),
         },
     )
 

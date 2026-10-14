@@ -128,26 +128,33 @@ is not configured by this feature.
 The monthly membership is **₦5,000**. Course browsing and course enrollment are
 separate from the optional portal membership.
 
-### Paystack test mode
+### Configure Paystack
 
-1. In the Paystack test dashboard, create a recurring monthly plan for
-   **₦5,000** and copy its plan code.
-2. Put the test secret key in `PAYSTACK_SECRET_KEY` and that plan code in
-   `PAYSTACK_PLAN_CODE`.
+1. In Paystack, create a recurring monthly plan for **₦5,000 NGN**. Copy its
+   plan code from the same environment (test or live) as the secret key.
+2. Set `PAYSTACK_SECRET_KEY` and `PAYSTACK_PLAN_CODE`. Use `sk_test_...` for
+   test checkout or `sk_live_...` for real charges. In production, add these
+   values as Vercel Production environment variables; never commit or share
+   secret keys.
 3. Configure the Paystack webhook URL as
    `https://<your-host>/webhooks/paystack/`.
 
-### Stripe test mode
+### Configure Stripe
 
-1. Set a Stripe test secret key (`sk_test_...`) as `STRIPE_SECRET_KEY`.
+1. Set `STRIPE_SECRET_KEY` to a test key (`sk_test_...`) for test checkout or
+   a live key (`sk_live_...`) for real charges. Confirm your Stripe account
+   supports recurring NGN payments before enabling live billing.
 2. Configure a webhook endpoint at `https://<your-host>/webhooks/stripe/` for
    `checkout.session.completed`, `invoice.payment_failed`,
    `customer.subscription.updated`, and `customer.subscription.deleted`.
-3. Set its signing secret as `STRIPE_WEBHOOK_SECRET`.
+3. Set the endpoint's signing secret as `STRIPE_WEBHOOK_SECRET`. In production,
+   add both values as Vercel Production environment variables; never commit or
+   share secret keys.
 
-The checkout endpoints reject live-mode secret keys. Payment provider
-credentials are required before checkout can be enabled; without them, the
-membership page explains which configuration is missing.
+The membership page labels each available provider as **Test** or **Live**.
+Test credentials never charge real money. Live recurring billing and
+subscription-status updates require valid live provider credentials and
+configured webhooks.
 
 ## Portal URLs
 

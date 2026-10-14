@@ -35,22 +35,28 @@
                     <form method="post" action="{% url 'subscription_checkout' %}">
                         {% csrf_token %}
                         <input type="hidden" name="provider" value="paystack">
-                        <button class="payment-button paystack-button" type="submit">Subscribe with Paystack</button>
+                        <button class="payment-button paystack-button" type="submit">Subscribe with Paystack ({{ paystack_mode|title }})</button>
                     </form>
                 {% else %}
-                    <p class="provider-notice">Paystack test checkout is unavailable until <code>PAYSTACK_SECRET_KEY</code> and <code>PAYSTACK_PLAN_CODE</code> are configured.</p>
+                    <p class="provider-notice">Paystack checkout is unavailable until a valid <code>PAYSTACK_SECRET_KEY</code> and <code>PAYSTACK_PLAN_CODE</code> are configured.</p>
                 {% endif %}
                 {% if stripe_configured %}
                     <form method="post" action="{% url 'subscription_checkout' %}">
                         {% csrf_token %}
                         <input type="hidden" name="provider" value="stripe">
-                        <button class="payment-button stripe-button" type="submit">Subscribe with Stripe</button>
+                        <button class="payment-button stripe-button" type="submit">Subscribe with Stripe ({{ stripe_mode|title }})</button>
                     </form>
                 {% else %}
-                    <p class="provider-notice">Stripe test checkout is unavailable until <code>STRIPE_SECRET_KEY</code> is configured.</p>
+                    <p class="provider-notice">Stripe checkout is unavailable until a valid <code>STRIPE_SECRET_KEY</code> and <code>STRIPE_WEBHOOK_SECRET</code> are configured.</p>
                 {% endif %}
             {% endif %}
-            <p class="subscription-footnote">Test mode only until provider test credentials and webhook endpoints are configured.</p>
+            {% if paystack_mode == 'test' or stripe_mode == 'test' %}
+                <p class="subscription-footnote">A provider marked Test will not collect real payments. Switch that provider to live credentials before charging members.</p>
+            {% elif paystack_mode == 'live' or stripe_mode == 'live' %}
+                <p class="subscription-footnote">Live billing is enabled for providers marked Live. Charges and recurring renewals are handled by the selected payment provider.</p>
+            {% else %}
+                <p class="subscription-footnote">Secure checkout is unavailable until live or test payment-provider credentials are configured.</p>
+            {% endif %}
         </div>
     </div>
 </section>

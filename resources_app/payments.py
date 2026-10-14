@@ -12,15 +12,28 @@ from django.urls import reverse
 from .models import PortalSubscription
 
 
+def payment_mode(secret_key):
+    if secret_key.startswith('sk_live_'):
+        return 'live'
+    if secret_key.startswith('sk_test_'):
+        return 'test'
+    return ''
+
+
+def paystack_mode():
+    return payment_mode(settings.PAYSTACK_SECRET_KEY)
+
+
+def stripe_mode():
+    return payment_mode(settings.STRIPE_SECRET_KEY)
+
+
 def is_paystack_configured():
-    return bool(
-        settings.PAYSTACK_SECRET_KEY.startswith('sk_test_')
-        and settings.PAYSTACK_PLAN_CODE
-    )
+    return bool(paystack_mode() and settings.PAYSTACK_PLAN_CODE)
 
 
 def is_stripe_configured():
-    return settings.STRIPE_SECRET_KEY.startswith('sk_test_')
+    return bool(stripe_mode() and settings.STRIPE_WEBHOOK_SECRET.startswith('whsec_'))
 
 
 def external_object_id(value):
@@ -35,7 +48,7 @@ def external_object_id(value):
 def create_paystack_checkout(request, checkout) -> str:
     if not is_paystack_configured():
         raise ValueError(
-            'Paystack test mode requires PAYSTACK_SECRET_KEY (sk_test_...) and '
+            'Paystack requires a valid PAYSTACK_SECRET_KEY and '
             'PAYSTACK_PLAN_CODE in the environment.'
         )
 
@@ -77,8 +90,8 @@ def create_paystack_checkout(request, checkout) -> str:
 
 
 def verify_paystack_transaction(reference):
-    if not settings.PAYSTACK_SECRET_KEY.startswith('sk_test_'):
-        raise ValueError('Paystack test secret key is not configured.')
+    if not paystack_mode():
+        raise ValueError('A valid Paystack secret key is not configured.')
 
     api_request = Request(
         f'https://api.paystack.co/transaction/verify/{quote(reference, safe="")}',
@@ -97,7 +110,7 @@ def verify_paystack_transaction(reference):
 
 def valid_paystack_signature(request):
     secret = settings.PAYSTACK_SECRET_KEY
-    if not secret.startswith('sk_test_'):
+    if not paystack_mode():
         return False
     expected = hmac.new(
         secret.encode(),
@@ -111,8 +124,8 @@ def valid_paystack_signature(request):
 def create_stripe_checkout(request, checkout) -> str:
     if not is_stripe_configured():
         raise ValueError(
-            'Stripe test mode requires STRIPE_SECRET_KEY (sk_test_...) '
-            'in the environment.'
+            'Stripe requires a valid STRIPE_SECRET_KEY and '
+            'STRIPE_WEBHOOK_SECRET in the environment.'
         )
 
     stripe.api_key = settings.STRIPE_SECRET_KEY

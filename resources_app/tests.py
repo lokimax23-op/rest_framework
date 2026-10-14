@@ -450,6 +450,32 @@ class SubscriptionAndGoogleAuthTests(TestCase):
         self.assertContains(response, 'PAYSTACK_PLAN_CODE')
         self.assertContains(response, 'STRIPE_SECRET_KEY')
 
+    @override_settings(
+        PAYSTACK_SECRET_KEY='sk_live_paystack',
+        PAYSTACK_PLAN_CODE='PLN_live',
+        STRIPE_SECRET_KEY='sk_live_stripe',
+        STRIPE_WEBHOOK_SECRET='whsec_live',
+    )
+    def test_membership_page_enables_both_live_payment_providers(self):
+        response = self.client.get('/membership/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Subscribe with Paystack (Live)')
+        self.assertContains(response, 'Subscribe with Stripe (Live)')
+        self.assertContains(response, 'Live billing is enabled')
+        self.assertNotContains(response, 'will not collect real payments')
+
+    @override_settings(
+        STRIPE_SECRET_KEY='sk_live_stripe',
+        STRIPE_WEBHOOK_SECRET='',
+    )
+    def test_stripe_checkout_stays_disabled_without_webhook_secret(self):
+        response = self.client.get('/membership/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Subscribe with Stripe (Live)')
+        self.assertContains(response, 'STRIPE_WEBHOOK_SECRET')
+
     def test_subscription_checkout_rejects_unknown_provider(self):
         response = self.client.post(
             '/membership/checkout/',
@@ -558,6 +584,45 @@ class SubscriptionAndGoogleAuthTests(TestCase):
         self.assertEqual(subscription.provider_subscription_id, 'SUB_test')
         checkout.refresh_from_db()
         self.assertEqual(checkout.status, SubscriptionCheckout.Status.SUCCEEDED)
+
+    @override_settings(PAYSTACK_SECRET_KEY='sk_live_webhook')
+    def test_paystack_webhook_accepts_live_signature(self):
+        checkout = SubscriptionCheckout.objects.create(
+            user=self.user,
+            provider=SubscriptionCheckout.Provider.PAYSTACK,
+            reference='paystack-live-reference',
+        )
+        payload = json.dumps(
+            {
+                'event': 'charge.success',
+                'data': {
+                    'reference': checkout.reference,
+                    'status': 'success',
+                    'amount': 500_000,
+                    'currency': 'NGN',
+                    'customer': {'email': self.user.email},
+                    'subscription': {'subscription_code': 'SUB_live'},
+                },
+            }
+        ).encode()
+        signature = hmac.new(
+            b'sk_live_webhook',
+            payload,
+            hashlib.sha512,
+        ).hexdigest()
+
+        response = self.client.post(
+            '/webhooks/paystack/',
+            data=payload,
+            content_type='application/json',
+            HTTP_X_PAYSTACK_SIGNATURE=signature,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            PortalSubscription.objects.get(user=self.user).provider_subscription_id,
+            'SUB_live',
+        )
 
     @override_settings(PAYSTACK_SECRET_KEY='sk_test_webhook')
     def test_paystack_webhook_rejects_invalid_signature(self):
