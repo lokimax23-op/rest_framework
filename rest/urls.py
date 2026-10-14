@@ -43,12 +43,7 @@ urlpatterns = [
         portal_views.submit_assignment_answer,
         name='submit_assignment_answer',
     ),
-    path(
-        'courses/<int:course_id>/assignments/<int:assignment_id>/submissions/'
-        '<int:submission_id>/files/<int:attachment_id>/',
-        portal_views.download_assignment_attachment,
-        name='download_assignment_attachment',
-    ),
+    
     path(
         'courses/<int:course_id>/assignments/<int:assignment_id>/submissions/'
         '<int:submission_id>/grade/',
